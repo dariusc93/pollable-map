@@ -1,5 +1,4 @@
 use crate::common::InnerMap;
-use futures::future::FusedFuture;
 use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
 use std::future::Future;
@@ -128,7 +127,7 @@ where
     }
 }
 
-impl<K, T> FusedFuture for FutureMap<K, T>
+impl<K, T> FusedStream for FutureMap<K, T>
 where
     K: Clone + PartialEq + Send + Unpin + 'static,
     T: Future + Unpin + Send + 'static,
