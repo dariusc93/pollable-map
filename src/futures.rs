@@ -53,7 +53,7 @@ where
         true
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (K, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &T)> {
         self.list.iter().filter_map(|st| st.key_value())
     }
 

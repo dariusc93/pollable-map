@@ -26,8 +26,8 @@ where
         &self.key
     }
 
-    pub fn key_value(&self) -> Option<(K, &S)> {
-        self.as_ref().map(|st| (self.key.clone(), st))
+    pub fn key_value(&self) -> Option<(&K, &S)> {
+        self.as_ref().map(|st| (self.key(), st))
     }
 
     pub fn key_value_mut(&mut self) -> Option<(K, &mut S)> {
