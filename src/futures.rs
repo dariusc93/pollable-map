@@ -28,12 +28,12 @@ where
     K: Clone + PartialEq + Send + Unpin + 'static,
     T: Future + Send + Unpin + 'static,
 {
-    pub fn insert(&mut self, key: K, stream: T) -> bool {
+    pub fn insert(&mut self, key: K, fut: T) -> bool {
         if self.contains_key(&key) {
             return false;
         }
 
-        let st = InnerMap::new(key, stream);
+        let st = InnerMap::new(key, fut);
         self.list.push(st);
 
         if let Some(waker) = self.waker.take() {
