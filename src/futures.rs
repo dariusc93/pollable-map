@@ -1,10 +1,10 @@
+use crate::common::InnerMap;
+use futures::future::FusedFuture;
 use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
-use futures::future::FusedFuture;
-use crate::common::InnerMap;
 
 pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,

@@ -1,11 +1,11 @@
-use std::future::Future;
-use futures::stream::{FusedStream, SelectAll};
-use futures::{Stream, StreamExt};
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
-use futures::future::FusedFuture;
 use crate::common::InnerMap;
 use crate::futures::FutureMap;
+use futures::future::FusedFuture;
+use futures::stream::{FusedStream, SelectAll};
+use futures::{Stream, StreamExt};
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
 
 pub struct StreamMap<K, S> {
     list: SelectAll<InnerMap<K, S>>,

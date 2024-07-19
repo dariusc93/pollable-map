@@ -1,7 +1,7 @@
+use futures::{FutureExt, Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use futures::{FutureExt, Stream, StreamExt};
 
 pub struct InnerMap<K, S> {
     key: K,
@@ -22,7 +22,6 @@ where
     K: Unpin + Clone,
     S: Unpin,
 {
-
     pub fn key(&self) -> &K {
         &self.key
     }
