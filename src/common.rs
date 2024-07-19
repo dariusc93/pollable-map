@@ -81,7 +81,10 @@ where
         };
 
         match futures::ready!(st.poll_next_unpin(cx)) {
-            Some(value) => Poll::Ready(Some((this.key.clone(), Some(value)))),
+            Some(value) => {
+                cx.waker().wake_by_ref();
+                Poll::Ready(Some((this.key.clone(), Some(value))))
+            },
             None => {
                 this.inner.take();
                 Poll::Ready(Some((self.key.clone(), None)))
