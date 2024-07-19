@@ -92,8 +92,7 @@ where
 
     pub fn remove(&mut self, key: &K) -> Option<T> {
         let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        let inner = st.take_inner();
-        inner
+        st.take_inner()
     }
 
     pub fn len(&self) -> usize {

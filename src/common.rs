@@ -27,18 +27,12 @@ where
     }
 
     pub fn key_value(&self) -> Option<(K, &S)> {
-        match self.as_ref() {
-            Some(st) => Some((self.key.clone(), st)),
-            None => None,
-        }
+        self.as_ref().map(|st| (self.key.clone(), st))
     }
 
     pub fn key_value_mut(&mut self) -> Option<(K, &mut S)> {
         let key = self.key.clone();
-        match self.as_mut() {
-            Some(st) => Some((key, st)),
-            None => None,
-        }
+        self.as_mut().map(|st| (key, st))
     }
 
     pub fn as_ref(&self) -> Option<&S> {
