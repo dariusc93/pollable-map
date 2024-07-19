@@ -9,6 +9,16 @@ pub struct StreamMap<K, S> {
     waker: Option<Waker>,
 }
 
+impl<K, T> Default for StreamMap<K, T>
+where
+    K: Clone + Unpin,
+    T: Stream + Send + Unpin + 'static,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K, T> StreamMap<K, T>
 where
     K: Clone + Unpin,

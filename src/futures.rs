@@ -10,10 +10,20 @@ pub struct FutureMap<K, S> {
     waker: Option<Waker>,
 }
 
+impl<K, T> Default for FutureMap<K, T>
+where
+    K: Clone + Unpin,
+    T: Future + Send + Unpin + 'static,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K, T> FutureMap<K, T>
 where
     K: Clone + Unpin,
-    T: Stream + Send + Unpin + 'static,
+    T: Future + Send + Unpin + 'static,
 {
     pub fn new() -> Self {
         Self {
