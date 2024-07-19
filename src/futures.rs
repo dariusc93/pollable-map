@@ -1,8 +1,9 @@
-use futures::stream::FuturesUnordered;
+use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
+use futures::future::FusedFuture;
 use crate::common::InnerMap;
 
 pub struct FutureMap<K, S> {
@@ -120,5 +121,19 @@ where
                 }
             }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.list.size_hint()
+    }
+}
+
+impl<K, T> FusedFuture for FutureMap<K, T>
+where
+    K: Clone + PartialEq + Send + Unpin + 'static,
+    T: Future + Unpin + Send + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.list.is_terminated()
     }
 }

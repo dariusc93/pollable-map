@@ -1,8 +1,11 @@
-use futures::stream::SelectAll;
+use std::future::Future;
+use futures::stream::{FusedStream, SelectAll};
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
+use futures::future::FusedFuture;
 use crate::common::InnerMap;
+use crate::futures::FutureMap;
 
 pub struct StreamMap<K, S> {
     list: SelectAll<InnerMap<K, S>>,
@@ -119,5 +122,19 @@ where
                 }
             }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.list.size_hint()
+    }
+}
+
+impl<K, T> FusedStream for StreamMap<K, T>
+where
+    K: Clone + PartialEq + Send + Unpin + 'static,
+    T: Stream + Unpin + Send + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.list.is_terminated()
     }
 }
