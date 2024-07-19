@@ -1,8 +1,9 @@
 use futures::stream::FuturesUnordered;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
+use crate::common::InnerMap;
 
 pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,
@@ -51,7 +52,7 @@ where
     }
 
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.list.iter().map(|st| &st.key)
+        self.list.iter().map(|st| st.key())
     }
 
     pub fn values(&self) -> impl Iterator<Item = &T> {
@@ -63,7 +64,7 @@ where
     }
 
     pub fn contains_key(&self, key: &K) -> bool {
-        self.list.iter().any(|st| st.key.eq(key))
+        self.list.iter().any(|st| st.key().eq(key))
     }
 
     pub fn clear(&mut self) {
@@ -71,17 +72,17 @@ where
     }
 
     pub fn get(&self, key: &K) -> Option<&T> {
-        let st = self.list.iter().find(|st| st.key.eq(key))?;
+        let st = self.list.iter().find(|st| st.key().eq(key))?;
         st.as_ref()
     }
 
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
-        let st = self.list.iter_mut().find(|st| st.key.eq(key))?;
+        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         st.as_mut()
     }
 
     pub fn remove(&mut self, key: &K) -> Option<T> {
-        let st = self.list.iter_mut().find(|st| st.key.eq(key))?;
+        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         let inner = st.take_inner();
         inner
     }
@@ -119,71 +120,5 @@ where
                 }
             }
         }
-    }
-}
-
-struct InnerMap<K, S> {
-    key: K,
-    inner_fut: Option<S>,
-}
-
-impl<K, S> InnerMap<K, S> {
-    fn new(key: K, inner_stream: S) -> Self {
-        Self {
-            key,
-            inner_fut: Some(inner_stream),
-        }
-    }
-}
-
-impl<K, S> InnerMap<K, S>
-where
-    K: Unpin + Clone,
-    S: Future + Unpin,
-{
-    pub fn key_value(&self) -> Option<(K, &S)> {
-        match self.as_ref() {
-            Some(st) => Some((self.key.clone(), st)),
-            None => None,
-        }
-    }
-
-    pub fn key_value_mut(&mut self) -> Option<(K, &mut S)> {
-        let key = self.key.clone();
-        match self.as_mut() {
-            Some(st) => Some((key, st)),
-            None => None,
-        }
-    }
-
-    pub fn as_ref(&self) -> Option<&S> {
-        self.inner_fut.as_ref()
-    }
-
-    pub fn as_mut(&mut self) -> Option<&mut S> {
-        self.inner_fut.as_mut()
-    }
-
-    pub fn take_inner(&mut self) -> Option<S> {
-        self.inner_fut.take()
-    }
-}
-
-impl<K, S> Future for InnerMap<K, S>
-where
-    K: Clone + Unpin,
-    S: Future + Unpin,
-{
-    type Output = (K, Option<S::Output>);
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = &mut *self;
-        let Some(st) = this.inner_fut.as_mut() else {
-            return Poll::Ready((this.key.clone(), None));
-        };
-
-        let output = futures::ready!(st.poll_unpin(cx));
-        this.inner_fut.take();
-        Poll::Ready((this.key.clone(), Some(output)))
     }
 }
