@@ -57,7 +57,7 @@ where
         self.list.iter().filter_map(|st| st.key_value())
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (K, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
         self.list.iter_mut().filter_map(|st| st.key_value_mut())
     }
 

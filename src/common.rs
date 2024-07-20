@@ -30,9 +30,9 @@ where
         self.as_ref().map(|st| (self.key(), st))
     }
 
-    pub fn key_value_mut(&mut self) -> Option<(K, &mut S)> {
-        let key = self.key.clone();
-        self.as_mut().map(|st| (key, st))
+    pub fn key_value_mut(&mut self) -> Option<(&K, &mut S)> {
+        let Self { ref key, inner, .. } = self;
+        inner.as_mut().map(|s| (key, s))
     }
 
     pub fn as_ref(&self) -> Option<&S> {
