@@ -27,7 +27,8 @@ where
     }
 
     pub fn key_value(&self) -> Option<(&K, &S)> {
-        self.as_ref().map(|st| (self.key(), st))
+        let Self { key, inner } = self;
+        inner.as_ref().map(|st| (key, st))
     }
 
     pub fn key_value_mut(&mut self) -> Option<(&K, &mut S)> {
@@ -35,11 +36,11 @@ where
         inner.as_mut().map(|s| (key, s))
     }
 
-    pub fn as_ref(&self) -> Option<&S> {
+    pub fn inner(&self) -> Option<&S> {
         self.inner.as_ref()
     }
 
-    pub fn as_mut(&mut self) -> Option<&mut S> {
+    pub fn inner_mut(&mut self) -> Option<&mut S> {
         self.inner.as_mut()
     }
 
@@ -77,18 +78,29 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = &mut *self;
         let Some(st) = this.inner.as_mut() else {
+            // Note: While we could panic for any attempts to poll the stream that doesnt exist or have been terminated,
+            //       we opt to just return `Poll::Ready(None)` and letting upstream define how to handle a terminated stream
+            //       although in the future this could change as we should not be polling any terminated streams or futures.
             return Poll::Ready(None);
         };
 
-        match futures::ready!(st.poll_next_unpin(cx)) {
-            Some(value) => {
+        match st.poll_next_unpin(cx) {
+            Poll::Ready(Some(value)) => {
+                // Since we made progress, we should attempt to proceed further by waking up the task
+                // TODO: Find a better way to wake task up without needing to call the waker on every successful result
+                //       from stream
                 cx.waker().wake_by_ref();
                 Poll::Ready(Some((this.key.clone(), Some(value))))
             },
-            None => {
+            Poll::Ready(None) => {
+                // Note: Although some streams can return a `Poll::Ready(None)`, we will have to assume that the stream is completely finished
+                //       and terminated at this point and that we should not attempt to poll again.
+                //       In the future, we could probably provide a flag that would allow us to take the inner stream or keep it and attempt on polling it again
+                //       without actually terminating it.
                 this.inner.take();
                 Poll::Ready(Some((self.key.clone(), None)))
             }
+            Poll::Pending => Poll::Pending
         }
     }
 }

@@ -66,11 +66,11 @@ where
     }
 
     pub fn values(&self) -> impl Iterator<Item = &T> {
-        self.list.iter().filter_map(|st| st.as_ref())
+        self.list.iter().filter_map(|st| st.inner())
     }
 
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        self.list.iter_mut().filter_map(|st| st.as_mut())
+        self.list.iter_mut().filter_map(|st| st.inner_mut())
     }
 
     pub fn contains_key(&self, key: &K) -> bool {
@@ -83,12 +83,12 @@ where
 
     pub fn get(&self, key: &K) -> Option<&T> {
         let st = self.list.iter().find(|st| st.key().eq(key))?;
-        st.as_ref()
+        st.inner()
     }
 
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        st.as_mut()
+        st.inner_mut()
     }
 
     pub fn remove(&mut self, key: &K) -> Option<T> {
@@ -117,10 +117,9 @@ where
         loop {
             match this.list.poll_next_unpin(cx) {
                 Poll::Ready(Some((key, Some(item)))) => return Poll::Ready(Some((key, item))),
+                // We continue in case there is any progress on the set of streams
                 Poll::Ready(Some((key, None))) => {
                     this.remove(&key);
-                    // We continue in case there is any progress on the set of streams
-                    continue;
                 }
                 Poll::Ready(None) | Poll::Pending => {
                     // Returning `None` does not mean the stream is actually terminated
