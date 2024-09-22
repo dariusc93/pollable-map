@@ -1,6 +1,6 @@
 use futures::stream::BoxStream;
 use futures::StreamExt;
-use futures_map::stream::StreamMap;
+use pollable_map::stream::StreamMap;
 
 fn main() {
     futures::executor::block_on(async {

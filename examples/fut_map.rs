@@ -1,6 +1,6 @@
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use futures_map::futures::FutureMap;
+use pollable_map::futures::FutureMap;
 
 fn main() {
     futures::executor::block_on(async {

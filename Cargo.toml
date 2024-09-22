@@ -1,10 +1,10 @@
 [package]
-name = "futures-map"
+name = "pollable-map"
 version = "0.1.0-alpha"
 edition = "2021"
 license = "Apache-2.0 OR MIT"
 description = "Utilites for storing futures and streams in as a pollable map"
-repository = "https://github.com/dariusc93/futures-map"
+repository = "https://github.com/dariusc93/pollable-map"
 authors = ["Darius Clark"]
 exclude = [".gitignore"]
 
