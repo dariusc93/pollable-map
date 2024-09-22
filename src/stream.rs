@@ -6,6 +6,7 @@ use std::task::{Context, Poll, Waker};
 
 pub struct StreamMap<K, S> {
     list: SelectAll<InnerMap<K, S>>,
+    finished: bool,
     waker: Option<Waker>,
 }
 
@@ -27,6 +28,7 @@ where
     pub fn new() -> Self {
         Self {
             list: SelectAll::new(),
+            finished: false,
             waker: None,
         }
     }
@@ -49,6 +51,7 @@ where
             waker.wake();
         }
 
+        self.finished = false;
         true
     }
 
@@ -96,11 +99,11 @@ where
     }
 
     pub fn len(&self) -> usize {
-        self.list.len()
+        self.list.iter().filter(|st| st.inner().is_some()).count()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.list.is_empty()
+        self.list.is_empty() || self.list.iter().all(|st| st.inner().is_none())
     }
 }
 
@@ -126,7 +129,23 @@ where
                 Poll::Ready(Some((key, None))) => {
                     this.remove(&key);
                 }
-                Poll::Ready(None) | Poll::Pending => {
+                Poll::Ready(None) => {
+                    // While we could allow the stream to continue to be pending, it would make more sense to notify that the stream
+                    // is empty without needing to explicitly check while polling the actual "map" itself
+                    // So we would mark a field to notify that the state is finished and return `Poll::Ready(None)` so the stream
+                    // can be terminated while on the next poll, we could let it be return pending.
+                    // We do this so that we are not returning `Poll::Ready(None)` each time the map is polled
+                    // as that may be seen as UB and may cause an increase in cpu usage
+                    if self.finished {
+                        self.waker = Some(cx.waker().clone());
+                        return Poll::Pending;
+                    }
+
+                    self.finished = true;
+                    return Poll::Ready(None);
+                }
+                Poll::Pending => {
+                    // Returning `None` does not mean the stream is actually terminated
                     self.waker = Some(cx.waker().clone());
                     return Poll::Pending;
                 }

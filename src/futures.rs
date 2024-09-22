@@ -100,11 +100,11 @@ where
     }
 
     pub fn len(&self) -> usize {
-        self.list.len()
+        self.list.iter().filter(|st| st.inner().is_some()).count()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.list.is_empty()
+        self.list.is_empty() || self.list.iter().all(|st| st.inner().is_none())
     }
 }
 
@@ -125,7 +125,7 @@ where
                     this.remove(&key);
                 }
                 Poll::Ready(None) => {
-                    // While we could allow the stream to continue to be pending, it would make more sense to notify that the `FutureMap`
+                    // While we could allow the stream to continue to be pending, it would make more sense to notify that the stream
                     // is empty without needing to explicitly check while polling the actual "map" itself
                     // So we would mark a field to notify that the state is finished and return `Poll::Ready(None)` so the stream
                     // can be terminated while on the next poll, we could let it be return pending.
