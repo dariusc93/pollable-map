@@ -91,7 +91,7 @@ where
                 //       from stream
                 cx.waker().wake_by_ref();
                 Poll::Ready(Some((this.key.clone(), Some(value))))
-            },
+            }
             Poll::Ready(None) => {
                 // Note: Although some streams can return a `Poll::Ready(None)`, we will have to assume that the stream is completely finished
                 //       and terminated at this point and that we should not attempt to poll again.
@@ -100,7 +100,7 @@ where
                 this.inner.take();
                 Poll::Ready(Some((self.key.clone(), None)))
             }
-            Poll::Pending => Poll::Pending
+            Poll::Pending => Poll::Pending,
         }
     }
 }
