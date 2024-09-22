@@ -6,13 +6,15 @@ use std::task::{Context, Poll};
 pub struct InnerMap<K, S> {
     key: K,
     inner: Option<S>,
+    wake_on_success: bool,
 }
 
 impl<K, S> InnerMap<K, S> {
-    pub fn new(key: K, inner: S) -> Self {
+    pub fn new(key: K, inner: S, wake_on_success: bool) -> Self {
         Self {
             key,
             inner: Some(inner),
+            wake_on_success,
         }
     }
 }
@@ -27,7 +29,7 @@ where
     }
 
     pub fn key_value(&self) -> Option<(&K, &S)> {
-        let Self { key, inner } = self;
+        let Self { key, inner, .. } = self;
         inner.as_ref().map(|st| (key, st))
     }
 
@@ -86,10 +88,12 @@ where
 
         match st.poll_next_unpin(cx) {
             Poll::Ready(Some(value)) => {
-                // Since we made progress, we should attempt to proceed further by waking up the task
-                // TODO: Find a better way to wake task up without needing to call the waker on every successful result
-                //       from stream
-                cx.waker().wake_by_ref();
+                if this.wake_on_success {
+                    // Since we made progress, we should attempt to proceed further by waking up the task
+                    // TODO: Find a better way to wake task up without needing to call the waker on every successful result
+                    //       from stream
+                    cx.waker().wake_by_ref();
+                }
                 Poll::Ready(Some((this.key.clone(), Some(value))))
             }
             Poll::Ready(None) => {
