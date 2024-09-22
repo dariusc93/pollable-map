@@ -7,7 +7,7 @@ use std::task::{Context, Poll, Waker};
 
 pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,
-    finished: bool,
+    empty: bool,
     waker: Option<Waker>,
 }
 
@@ -29,7 +29,7 @@ where
     pub fn new() -> Self {
         Self {
             list: FuturesUnordered::new(),
-            finished: false,
+            empty: true,
             waker: None,
         }
     }
@@ -52,7 +52,7 @@ where
             waker.wake();
         }
 
-        self.finished = false;
+        self.empty = false;
         true
     }
 
@@ -131,12 +131,12 @@ where
                     // can be terminated while on the next poll, we could let it be return pending.
                     // We do this so that we are not returning `Poll::Ready(None)` each time the map is polled
                     // as that may be seen as UB and may cause an increase in cpu usage
-                    if self.finished {
+                    if self.empty {
                         self.waker = Some(cx.waker().clone());
                         return Poll::Pending;
                     }
 
-                    self.finished = true;
+                    self.empty = true;
                     return Poll::Ready(None);
                 }
                 Poll::Pending => {
