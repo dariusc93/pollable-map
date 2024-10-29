@@ -1,8 +1,8 @@
+use futures::Stream;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
-use futures::Stream;
 
 /// An unbounded queue of futures imposed a FIFO order while polling one future at a time
 /// and returning the output to stream before popping the next future in queue to be polled.
@@ -12,7 +12,10 @@ pub struct OrderedFutureSet<F> {
     waker: Option<Waker>,
 }
 
-impl<F> OrderedFutureSet<F> where F: Future + Send + Unpin + 'static{
+impl<F> OrderedFutureSet<F>
+where
+    F: Future + Send + Unpin + 'static,
+{
     /// Constructs a new, empty [`OrderedFutureSet`]
     pub fn new() -> Self {
         Self {
@@ -31,7 +34,10 @@ impl<F> OrderedFutureSet<F> where F: Future + Send + Unpin + 'static{
     }
 }
 
-impl<F> Stream for OrderedFutureSet<F> where F: Future + Send + Unpin + 'static {
+impl<F> Stream for OrderedFutureSet<F>
+where
+    F: Future + Send + Unpin + 'static,
+{
     type Item = F::Output;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let this = &mut *self;
@@ -49,7 +55,7 @@ impl<F> Stream for OrderedFutureSet<F> where F: Future + Send + Unpin + 'static 
                     let output = futures::ready!(Pin::new(fut).poll(cx));
                     this.current_future.take();
                     return Poll::Ready(Some(output));
-                },
+                }
                 None => {
                     this.waker.replace(cx.waker().clone());
                 }
@@ -65,15 +71,13 @@ impl<F> Stream for OrderedFutureSet<F> where F: Future + Send + Unpin + 'static 
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use futures::{FutureExt, StreamExt};
     use crate::futures::ordered::OrderedFutureSet;
+    use futures::{FutureExt, StreamExt};
 
     #[test]
     fn fifo_futures() {
-
         futures::executor::block_on(async move {
             let mut fifo = OrderedFutureSet::new();
             fifo.push(futures::future::ready(1));
@@ -83,8 +87,7 @@ mod tests {
 
             let items = fifo.take(4).collect::<Vec<u8>>().now_or_never().unwrap();
 
-            assert_eq!(items, vec![1,2,4,3]);
-
+            assert_eq!(items, vec![1, 2, 4, 3]);
         });
     }
 }
