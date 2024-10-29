@@ -1,3 +1,5 @@
+pub mod ordered;
+
 use crate::common::InnerMap;
 use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
