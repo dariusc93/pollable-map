@@ -1,3 +1,5 @@
+pub mod ordered;
+
 use crate::common::InnerMap;
 use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
@@ -26,6 +28,7 @@ where
     K: Clone + Unpin,
     T: Future + Send + Unpin + 'static,
 {
+    /// Creates an empty [`FutureMap`]
     pub fn new() -> Self {
         Self {
             list: FuturesUnordered::new(),
@@ -40,6 +43,9 @@ where
     K: Clone + PartialEq + Send + Unpin + 'static,
     T: Future + Send + Unpin + 'static,
 {
+    /// Insert a future into the map with a unique key.
+    /// The function will return true if the map does not have the key present,
+    /// otherwise it will return false
     pub fn insert(&mut self, key: K, fut: T) -> bool {
         if self.contains_key(&key) {
             return false;
@@ -56,53 +62,65 @@ where
         true
     }
 
+    /// An iterator visiting all key-value pairs in arbitrary order.
     pub fn iter(&self) -> impl Iterator<Item = (&K, &T)> {
         self.list.iter().filter_map(|st| st.key_value())
     }
 
+    /// An iterator visiting all key-value pairs mutably in arbitrary order.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
         self.list.iter_mut().filter_map(|st| st.key_value_mut())
     }
 
+    /// Returns an iterator visiting all keys in arbitrary order.
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.list.iter().map(|st| st.key())
     }
 
+    /// An iterator visiting all values in arbitrary order.
     pub fn values(&self) -> impl Iterator<Item = &T> {
         self.list.iter().filter_map(|st| st.inner())
     }
 
+    /// An iterator visiting all values mutably in arbitrary order.
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.list.iter_mut().filter_map(|st| st.inner_mut())
     }
 
+    /// Returns `true` if the map contains a future for the specified key.
     pub fn contains_key(&self, key: &K) -> bool {
         self.list.iter().any(|st| st.key().eq(key))
     }
 
+    /// Clears the map.
     pub fn clear(&mut self) {
         self.list.clear();
     }
 
+    /// Returns a reference to the future corresponding to the key.
     pub fn get(&self, key: &K) -> Option<&T> {
         let st = self.list.iter().find(|st| st.key().eq(key))?;
         st.inner()
     }
 
+    /// Returns a mutable future to the value corresponding to the key.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         st.inner_mut()
     }
 
+    /// Removes a key from the map, returning the future.
     pub fn remove(&mut self, key: &K) -> Option<T> {
         let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         st.take_inner()
     }
 
+    /// Returns the number of futures in the map.
     pub fn len(&self) -> usize {
         self.list.iter().filter(|st| st.inner().is_some()).count()
     }
 
+    /// Return `true` map contains no elements.
     pub fn is_empty(&self) -> bool {
         self.list.is_empty() || self.list.iter().all(|st| st.inner().is_none())
     }
