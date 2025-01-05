@@ -54,6 +54,7 @@ where
                 Some(fut) => {
                     let output = futures::ready!(Pin::new(fut).poll(cx));
                     this.current_future.take();
+                    cx.waker().wake_by_ref();
                     return Poll::Ready(Some(output));
                 }
                 None => {
