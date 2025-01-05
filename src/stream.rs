@@ -1,3 +1,5 @@
+pub mod optional;
+
 use crate::common::InnerMap;
 use futures::stream::{FusedStream, SelectAll};
 use futures::{Stream, StreamExt};
