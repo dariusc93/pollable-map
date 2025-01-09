@@ -63,13 +63,13 @@ where
     }
 
     /// Mark stream with assigned key to wake up on successful yield.
-    /// Will return false if stream does not exist.
+    /// Will return false if stream does not exist or if value is the same as
+    /// previously set.
     pub fn set_wake_on_success(&mut self, key: &K, wake_on_success: bool) -> bool {
         let Some(st) = self.list.iter_mut().find(|st| st.key().eq(key)) else {
             return false;
         };
-        st.set_wake_on_success(wake_on_success);
-        true
+        st.set_wake_on_success(wake_on_success)
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.

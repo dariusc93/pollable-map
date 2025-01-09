@@ -18,8 +18,10 @@ impl<K, S> InnerMap<K, S> {
         }
     }
 
-    pub fn set_wake_on_success(&mut self, wake_on_success: bool) {
+    pub fn set_wake_on_success(&mut self, wake_on_success: bool) -> bool {
+        let prev = self.wake_on_success;
         self.wake_on_success = wake_on_success;
+        wake_on_success != prev
     }
 }
 
