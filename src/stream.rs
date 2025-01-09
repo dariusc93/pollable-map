@@ -125,8 +125,8 @@ where
     }
 
     /// Returns a pinned stream corresponding to the key.
-    pub fn get_pinned(&self, key: &K) -> Option<Pin<&mut T>> {
-        let st = self.list.iter().find(|st| st.key().eq(key))?;
+    pub fn get_pinned(&mut self, key: &K) -> Option<Pin<&mut T>> {
+        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         st.inner_pin()
     }
 
