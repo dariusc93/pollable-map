@@ -52,7 +52,7 @@ where
             return false;
         }
 
-        let st = InnerMap::new(key, fut, false);
+        let st = InnerMap::new(key, fut);
         self.list.push(st);
 
         if let Some(waker) = self.waker.take() {
@@ -71,6 +71,11 @@ where
     /// An iterator visiting all key-value pairs mutably in arbitrary order.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
         self.list.iter_mut().filter_map(|st| st.key_value_mut())
+    }
+
+    /// An iterator visiting all key-value pairs with a pinned valued in arbitrary order
+    pub fn iter_pin(&mut self) -> impl Iterator<Item = (&K, Pin<&mut T>)> {
+        self.list.iter_mut().filter_map(|st| st.key_value_pin())
     }
 
     /// Returns an iterator visiting all keys in arbitrary order.
@@ -108,6 +113,12 @@ where
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         st.inner_mut()
+    }
+
+    /// Returns a pinned future corresponding to the key.
+    pub fn get_pinned(&self, key: &K) -> Option<Pin<&mut T>> {
+        let st = self.list.iter().find(|st| st.key().eq(key))?;
+        st.inner_pin()
     }
 
     /// Removes a key from the map, returning the future.

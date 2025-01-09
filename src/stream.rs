@@ -51,7 +51,7 @@ where
             return false;
         }
 
-        let st = InnerMap::new(key, stream, false);
+        let st = InnerMap::new(key, stream);
         self.list.push(st);
 
         if let Some(waker) = self.waker.take() {
@@ -59,6 +59,16 @@ where
         }
 
         self.empty = false;
+        true
+    }
+
+    /// Mark stream with assigned key to wake up on successful yield.
+    /// Will return false if stream does not exist.
+    pub fn set_wake_on_success(&mut self, key: &K, wake_on_success: bool) -> bool {
+        let Some(st) = self.list.iter_mut().find(|st| st.key().eq(key)) else {
+            return false;
+        };
+        st.set_wake_on_success(wake_on_success);
         true
     }
 
@@ -70,6 +80,11 @@ where
     /// An iterator visiting all key-value pairs mutably in arbitrary order.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
         self.list.iter_mut().filter_map(|st| st.key_value_mut())
+    }
+
+    /// An iterator visiting all key-value pairs with a pinned valued in arbitrary order
+    pub fn iter_pin(&mut self) -> impl Iterator<Item = (&K, Pin<&mut T>)> {
+        self.list.iter_mut().filter_map(|st| st.key_value_pin())
     }
 
     /// Returns an iterator visiting all keys in arbitrary order.
@@ -107,6 +122,12 @@ where
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
         st.inner_mut()
+    }
+
+    /// Returns a pinned stream corresponding to the key.
+    pub fn get_pinned(&self, key: &K) -> Option<Pin<&mut T>> {
+        let st = self.list.iter().find(|st| st.key().eq(key))?;
+        st.inner_pin()
     }
 
     /// Removes a key from the map, returning the stream.
