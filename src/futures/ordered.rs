@@ -12,17 +12,23 @@ pub struct OrderedFutureSet<F> {
     waker: Option<Waker>,
 }
 
+impl<F> Default for OrderedFutureSet<F> {
+    fn default() -> Self {
+        Self {
+            queue: VecDeque::new(),
+            current_future: None,
+            waker: None,
+        }
+    }
+}
+
 impl<F> OrderedFutureSet<F>
 where
     F: Future + Send + Unpin + 'static,
 {
     /// Constructs a new, empty [`OrderedFutureSet`]
     pub fn new() -> Self {
-        Self {
-            queue: VecDeque::new(),
-            current_future: None,
-            waker: None,
-        }
+        Self::default()
     }
 
     /// Furshes a future to the back of the queue
