@@ -30,7 +30,7 @@ impl<F> From<Option<F>> for OptionalFuture<F> {
     fn from(fut: Option<F>) -> Self {
         Self {
             future: fut,
-            waker: None
+            waker: None,
         }
     }
 }

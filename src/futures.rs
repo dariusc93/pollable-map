@@ -138,6 +138,20 @@ where
     }
 }
 
+impl<K, T> FromIterator<(K, T)> for FutureMap<K, T>
+where
+    K: Clone + PartialEq + Send + Unpin + 'static,
+    T: Future + Send + Unpin + 'static,
+{
+    fn from_iter<I: IntoIterator<Item = (K, T)>>(iter: I) -> Self {
+        let mut maps = Self::new();
+        for (key, val) in iter {
+            maps.insert(key, val);
+        }
+        maps
+    }
+}
+
 impl<K, T> Stream for FutureMap<K, T>
 where
     K: Clone + PartialEq + Send + Unpin + 'static,

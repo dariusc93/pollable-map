@@ -40,6 +40,19 @@ where
     }
 }
 
+impl<F> FromIterator<F> for OrderedFutureSet<F>
+where
+    F: Future + Send + Unpin + 'static,
+{
+    fn from_iter<T: IntoIterator<Item = F>>(iter: T) -> Self {
+        let mut ordered = Self::new();
+        for fut in iter {
+            ordered.push(fut);
+        }
+        ordered
+    }
+}
+
 impl<F> Stream for OrderedFutureSet<F>
 where
     F: Future + Send + Unpin + 'static,

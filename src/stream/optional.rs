@@ -29,7 +29,7 @@ impl<S> From<Option<S>> for OptionalStream<S> {
     fn from(st: Option<S>) -> Self {
         Self {
             stream: st,
-            waker: None
+            waker: None,
         }
     }
 }
