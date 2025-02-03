@@ -25,6 +25,15 @@ impl<S> Default for OptionalStream<S> {
     }
 }
 
+impl<S> From<Option<S>> for OptionalStream<S> {
+    fn from(st: Option<S>) -> Self {
+        Self {
+            stream: st,
+            waker: None
+        }
+    }
+}
+
 impl<S> OptionalStream<S>
 where
     S: Stream + Send + Unpin + 'static,

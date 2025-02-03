@@ -26,6 +26,15 @@ impl<F> Default for OptionalFuture<F> {
     }
 }
 
+impl<F> From<Option<F>> for OptionalFuture<F> {
+    fn from(fut: Option<F>) -> Self {
+        Self {
+            future: fut,
+            waker: None
+        }
+    }
+}
+
 impl<F> OptionalFuture<F>
 where
     F: Future + Send + Unpin + 'static,
