@@ -23,13 +23,7 @@ impl<K, S> InnerMap<K, S> {
         self.wake_on_success = wake_on_success;
         wake_on_success != prev
     }
-}
 
-impl<K, S> InnerMap<K, S>
-where
-    K: Unpin + Clone,
-    S: Unpin,
-{
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -44,15 +38,6 @@ where
         inner.as_mut().map(|s| (key, s))
     }
 
-    pub fn key_value_pin(&mut self) -> Option<(&K, Pin<&mut S>)> {
-        let Self { ref key, inner, .. } = self;
-        inner.as_mut().map(|s| (key, Pin::new(s)))
-    }
-
-    pub fn inner_pin(&mut self) -> Option<Pin<&mut S>> {
-        self.inner_mut().map(Pin::new)
-    }
-
     pub fn inner(&self) -> Option<&S> {
         self.inner.as_ref()
     }
@@ -63,6 +48,21 @@ where
 
     pub fn take_inner(&mut self) -> Option<S> {
         self.inner.take()
+    }
+}
+
+impl<K, S> InnerMap<K, S>
+where
+    K: Unpin + Clone,
+    S: Unpin,
+{
+    pub fn key_value_pin(&mut self) -> Option<(&K, Pin<&mut S>)> {
+        let Self { ref key, inner, .. } = self;
+        inner.as_mut().map(|s| (key, Pin::new(s)))
+    }
+
+    pub fn inner_pin(&mut self) -> Option<Pin<&mut S>> {
+        self.inner_mut().map(Pin::new)
     }
 }
 

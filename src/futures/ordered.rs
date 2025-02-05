@@ -22,10 +22,7 @@ impl<F> Default for OrderedFutureSet<F> {
     }
 }
 
-impl<F> OrderedFutureSet<F>
-where
-    F: Future + Send + Unpin + 'static,
-{
+impl<F> OrderedFutureSet<F> {
     /// Constructs a new, empty [`OrderedFutureSet`]
     pub fn new() -> Self {
         Self::default()
