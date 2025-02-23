@@ -35,10 +35,7 @@ impl<F> From<Option<F>> for OptionalFuture<F> {
     }
 }
 
-impl<F> OptionalFuture<F>
-where
-    F: Future + Send + Unpin + 'static,
-{
+impl<F> OptionalFuture<F> {
     /// Construct a new `OptionalFuture` with an existing `Future`.
     pub fn new(future: F) -> Self {
         Self {

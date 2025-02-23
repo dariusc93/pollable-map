@@ -34,10 +34,7 @@ impl<S> From<Option<S>> for OptionalStream<S> {
     }
 }
 
-impl<S> OptionalStream<S>
-where
-    S: Stream + Send + Unpin + 'static,
-{
+impl<S> OptionalStream<S> {
     /// Constructs a new `OptionalStream` with an existing `Stream`.
     pub fn new(st: S) -> Self {
         Self {

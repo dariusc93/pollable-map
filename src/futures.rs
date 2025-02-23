@@ -14,21 +14,13 @@ pub struct FutureMap<K, S> {
     waker: Option<Waker>,
 }
 
-impl<K, T> Default for FutureMap<K, T>
-where
-    K: Clone + Unpin,
-    T: Future + Send + Unpin + 'static,
-{
+impl<K, T> Default for FutureMap<K, T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<K, T> FutureMap<K, T>
-where
-    K: Clone + Unpin,
-    T: Future + Send + Unpin + 'static,
-{
+impl<K, T> FutureMap<K, T> {
     /// Creates an empty [`FutureMap`]
     pub fn new() -> Self {
         Self {
@@ -61,6 +53,16 @@ where
 
         self.empty = false;
         true
+    }
+
+    /// Mark future with assigned key to wake up on successful yield.
+    /// Will return false if future does not exist or if value is the same as
+    /// previously set.
+    pub fn set_wake_on_success(&mut self, key: &K, wake_on_success: bool) -> bool {
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .is_some_and(|st| st.set_wake_on_success(wake_on_success))
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -105,26 +107,34 @@ where
 
     /// Returns a reference to the future corresponding to the key.
     pub fn get(&self, key: &K) -> Option<&T> {
-        let st = self.list.iter().find(|st| st.key().eq(key))?;
-        st.inner()
+        self.list
+            .iter()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.inner())
     }
 
     /// Returns a mutable future to the value corresponding to the key.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
-        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        st.inner_mut()
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.inner_mut())
     }
 
     /// Returns a pinned future corresponding to the key.
     pub fn get_pinned(&mut self, key: &K) -> Option<Pin<&mut T>> {
-        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        st.inner_pin()
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.inner_pin())
     }
 
     /// Removes a key from the map, returning the future.
     pub fn remove(&mut self, key: &K) -> Option<T> {
-        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        st.take_inner()
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.take_inner())
     }
 
     /// Returns the number of futures in the map.
