@@ -1,3 +1,5 @@
+pub mod optional;
+
 use crate::common::InnerMap;
 use futures::stream::{FusedStream, SelectAll};
 use futures::{Stream, StreamExt};
@@ -49,7 +51,7 @@ where
             return false;
         }
 
-        let st = InnerMap::new(key, stream, false);
+        let st = InnerMap::new(key, stream);
         self.list.push(st);
 
         if let Some(waker) = self.waker.take() {
@@ -60,6 +62,16 @@ where
         true
     }
 
+    /// Mark stream with assigned key to wake up on successful yield.
+    /// Will return false if stream does not exist or if value is the same as
+    /// previously set.
+    pub fn set_wake_on_success(&mut self, key: &K, wake_on_success: bool) -> bool {
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .is_some_and(|st| st.set_wake_on_success(wake_on_success))
+    }
+
     /// An iterator visiting all key-value pairs in arbitrary order.
     pub fn iter(&self) -> impl Iterator<Item = (&K, &T)> {
         self.list.iter().filter_map(|st| st.key_value())
@@ -68,6 +80,11 @@ where
     /// An iterator visiting all key-value pairs mutably in arbitrary order.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
         self.list.iter_mut().filter_map(|st| st.key_value_mut())
+    }
+
+    /// An iterator visiting all key-value pairs with a pinned valued in arbitrary order
+    pub fn iter_pin(&mut self) -> impl Iterator<Item = (&K, Pin<&mut T>)> {
+        self.list.iter_mut().filter_map(|st| st.key_value_pin())
     }
 
     /// Returns an iterator visiting all keys in arbitrary order.
@@ -97,20 +114,34 @@ where
 
     /// Returns a reference to the stream corresponding to the key.
     pub fn get(&self, key: &K) -> Option<&T> {
-        let st = self.list.iter().find(|st| st.key().eq(key))?;
-        st.inner()
+        self.list
+            .iter()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.inner())
     }
 
     /// Returns a mutable stream to the value corresponding to the key.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
-        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        st.inner_mut()
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.inner_mut())
+    }
+
+    /// Returns a pinned stream corresponding to the key.
+    pub fn get_pinned(&mut self, key: &K) -> Option<Pin<&mut T>> {
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.inner_pin())
     }
 
     /// Removes a key from the map, returning the stream.
     pub fn remove(&mut self, key: &K) -> Option<T> {
-        let st = self.list.iter_mut().find(|st| st.key().eq(key))?;
-        st.take_inner()
+        self.list
+            .iter_mut()
+            .find(|st| st.key().eq(key))
+            .and_then(|st| st.take_inner())
     }
 
     /// Returns the number of streams in the map.
@@ -121,6 +152,20 @@ where
     /// Return `true` map contains no elements.
     pub fn is_empty(&self) -> bool {
         self.list.is_empty() || self.list.iter().all(|st| st.inner().is_none())
+    }
+}
+
+impl<K, T> FromIterator<(K, T)> for StreamMap<K, T>
+where
+    K: Clone + PartialEq + Send + Unpin + 'static,
+    T: Stream + Send + Unpin + 'static,
+{
+    fn from_iter<I: IntoIterator<Item = (K, T)>>(iter: I) -> Self {
+        let mut maps = Self::new();
+        for (key, val) in iter {
+            maps.insert(key, val);
+        }
+        maps
     }
 }
 

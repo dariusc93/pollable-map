@@ -12,17 +12,20 @@ pub struct OrderedFutureSet<F> {
     waker: Option<Waker>,
 }
 
-impl<F> OrderedFutureSet<F>
-where
-    F: Future + Send + Unpin + 'static,
-{
-    /// Constructs a new, empty [`OrderedFutureSet`]
-    pub fn new() -> Self {
+impl<F> Default for OrderedFutureSet<F> {
+    fn default() -> Self {
         Self {
             queue: VecDeque::new(),
             current_future: None,
             waker: None,
         }
+    }
+}
+
+impl<F> OrderedFutureSet<F> {
+    /// Constructs a new, empty [`OrderedFutureSet`]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Furshes a future to the back of the queue
@@ -31,6 +34,19 @@ where
         if let Some(waker) = self.waker.take() {
             waker.wake();
         }
+    }
+}
+
+impl<F> FromIterator<F> for OrderedFutureSet<F>
+where
+    F: Future + Send + Unpin + 'static,
+{
+    fn from_iter<T: IntoIterator<Item = F>>(iter: T) -> Self {
+        let mut ordered = Self::new();
+        for fut in iter {
+            ordered.push(fut);
+        }
+        ordered
     }
 }
 
@@ -54,6 +70,7 @@ where
                 Some(fut) => {
                     let output = futures::ready!(Pin::new(fut).poll(cx));
                     this.current_future.take();
+                    cx.waker().wake_by_ref();
                     return Poll::Ready(Some(output));
                 }
                 None => {
