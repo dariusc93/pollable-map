@@ -34,6 +34,15 @@ impl<S> From<Option<S>> for OptionalStream<S> {
     }
 }
 
+impl<S: Stream> From<S> for OptionalStream<S> {
+    fn from(st: S) -> Self {
+        Self {
+            stream: Some(st),
+            waker: None,
+        }
+    }
+}
+
 impl<S> OptionalStream<S> {
     /// Constructs a new `OptionalStream` with an existing `Stream`.
     pub fn new(st: S) -> Self {
@@ -163,6 +172,24 @@ mod test {
 
         let val = Pin::new(&mut stream).poll_next(&mut Context::from_waker(waker));
         assert_eq!(val, Poll::Ready(Some(1)));
+        assert!(stream.is_some());
+
+        let val = Pin::new(&mut stream).poll_next(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(None));
+        assert!(stream.is_none());
+    }
+
+    #[test]
+    fn convert_stream_to_optional_stream() {
+        let st = futures::stream::once(async { 0 }).boxed();
+
+        let mut stream = OptionalStream::from(st);
+
+        assert!(stream.is_some());
+        let waker = futures::task::noop_waker_ref();
+
+        let val = Pin::new(&mut stream).poll_next(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(Some(0)));
         assert!(stream.is_some());
 
         let val = Pin::new(&mut stream).poll_next(&mut Context::from_waker(waker));

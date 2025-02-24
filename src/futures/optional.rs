@@ -35,6 +35,15 @@ impl<F> From<Option<F>> for OptionalFuture<F> {
     }
 }
 
+impl<F: Future> From<F> for OptionalFuture<F> {
+    fn from(fut: F) -> Self {
+        Self {
+            future: Some(fut),
+            waker: None,
+        }
+    }
+}
+
 impl<F> OptionalFuture<F> {
     /// Construct a new `OptionalFuture` with an existing `Future`.
     pub fn new(future: F) -> Self {
@@ -147,6 +156,19 @@ mod test {
 
         let val = Pin::new(&mut future).poll(&mut Context::from_waker(waker));
         assert_eq!(val, Poll::Ready(1));
+        assert!(future.is_none());
+    }
+
+    #[test]
+    fn convert_future_to_optional_future() {
+        let fut = futures::future::ready(0);
+
+        let mut future = OptionalFuture::from(fut);
+        assert!(future.is_some());
+        let waker = futures::task::noop_waker_ref();
+
+        let val = Pin::new(&mut future).poll(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(0));
         assert!(future.is_none());
     }
 }
