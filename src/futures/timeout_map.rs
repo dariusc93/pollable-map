@@ -55,4 +55,8 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.map.poll_next_unpin(cx)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.map.size_hint()
+    }
 }

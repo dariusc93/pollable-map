@@ -91,4 +91,8 @@ where
             .poll_next_unpin(cx)
             .map(|output| output.map(|(_, item)| item))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.map.size_hint()
+    }
 }
