@@ -1,36 +1,41 @@
-use std::pin::Pin;
 use futures::{Stream, StreamExt};
+use std::pin::Pin;
 
 use super::StreamMap;
 use std::task::{Context, Poll};
 
 pub struct StreamSet<S> {
     id: i64,
-    map: StreamMap<i64, S>
+    map: StreamMap<i64, S>,
 }
 
-impl<S> Default for StreamSet<S> where S: Stream + Send + Unpin + 'static {
+impl<S> Default for StreamSet<S>
+where
+    S: Stream + Send + Unpin + 'static,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S> StreamSet<S> where S: Stream + Send + Unpin + 'static {
-    
+impl<S> StreamSet<S>
+where
+    S: Stream + Send + Unpin + 'static,
+{
     /// Creates an empty ['StreamSet`]
     pub fn new() -> Self {
         Self {
             id: 0,
-            map: StreamMap::default()
+            map: StreamMap::default(),
         }
     }
-    
+
     /// Insert a stream into the set of streams.
     pub fn insert(&mut self, stream: S) -> bool {
         let id = self.id.wrapping_add(1);
         self.map.insert(id, stream)
     }
-    
+
     /// An iterator visiting all streams in arbitrary order.
     pub fn iter(&self) -> impl Iterator<Item = &S> {
         self.map.iter().map(|(_, st)| st)
@@ -75,10 +80,15 @@ where
     }
 }
 
-impl<S> Stream for StreamSet<S> where S: Stream + Send + Unpin + 'static {
+impl<S> Stream for StreamSet<S>
+where
+    S: Stream + Send + Unpin + 'static,
+{
     type Item = S::Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.map.poll_next_unpin(cx).map(|output| output.map(|(_, item)| item))
+        self.map
+            .poll_next_unpin(cx)
+            .map(|output| output.map(|(_, item)| item))
     }
 }

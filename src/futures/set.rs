@@ -2,27 +2,32 @@ use std::future::Future;
 use std::pin::Pin;
 
 use super::FutureMap;
-use std::task::{Context, Poll};
 use futures::{Stream, StreamExt};
+use std::task::{Context, Poll};
 
 pub struct FutureSet<S> {
     id: i64,
-    map: FutureMap<i64, S>
+    map: FutureMap<i64, S>,
 }
 
-impl<S> Default for FutureSet<S> where S: Future + Send + Unpin + 'static {
+impl<S> Default for FutureSet<S>
+where
+    S: Future + Send + Unpin + 'static,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S> FutureSet<S> where S: Future + Send + Unpin + 'static {
-
+impl<S> FutureSet<S>
+where
+    S: Future + Send + Unpin + 'static,
+{
     /// Creates an empty ['FutureSet`]
     pub fn new() -> Self {
         Self {
             id: 0,
-            map: FutureMap::default()
+            map: FutureMap::default(),
         }
     }
 
@@ -76,10 +81,15 @@ where
     }
 }
 
-impl<S> Stream for FutureSet<S> where S: Future + Send + Unpin + 'static {
+impl<S> Stream for FutureSet<S>
+where
+    S: Future + Send + Unpin + 'static,
+{
     type Item = S::Output;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.map.poll_next_unpin(cx).map(|output| output.map(|(_, item)| item))
+        self.map
+            .poll_next_unpin(cx)
+            .map(|output| output.map(|(_, item)| item))
     }
 }

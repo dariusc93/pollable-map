@@ -35,7 +35,7 @@ impl<F> OrderedFutureSet<F> {
             waker.wake();
         }
     }
-    
+
     /// Remove a future from the front of the queue
     pub fn pop_front(&mut self) -> Option<F> {
         let fut = self.queue.pop_front();
@@ -44,7 +44,7 @@ impl<F> OrderedFutureSet<F> {
         }
         fut
     }
-    
+
     /// Remove a future from the back of the queue
     pub fn pop_back(&mut self) -> Option<F> {
         let fut = self.queue.pop_back();
@@ -125,7 +125,7 @@ mod tests {
             assert_eq!(items, vec![1, 2, 4, 3]);
         });
     }
-    
+
     #[test]
     fn remove_front_entry() {
         futures::executor::block_on(async move {
@@ -134,18 +134,18 @@ mod tests {
             fifo.push(futures::future::ready(2));
             fifo.push(futures::future::ready(4));
             fifo.push(futures::future::ready(3));
-            
+
             let front_fut = fifo.pop_front();
             // TODO: Write a `Ready` future that supports `Eq` and `PartialEq` for tests
             //       to use `assert_eq(front_fut, Some(futures::future::ready(1)));`
             assert!(front_fut.is_some());
-            
+
             let items = fifo.take(3).collect::<Vec<u8>>().await;
 
             assert_eq!(items, vec![2, 4, 3]);
         })
     }
-    
+
     #[test]
     fn remove_back_entry() {
         futures::executor::block_on(async move {
@@ -154,12 +154,12 @@ mod tests {
             fifo.push(futures::future::ready(2));
             fifo.push(futures::future::ready(4));
             fifo.push(futures::future::ready(3));
-            
+
             let front_fut = fifo.pop_back();
             // TODO: Write a `Ready` future that supports `Eq` and `PartialEq` for tests
             //       to use `assert_eq(front_fut, Some(futures::future::ready(3)));`
             assert!(front_fut.is_some());
-            
+
             let items = fifo.take(3).collect::<Vec<u8>>().await;
 
             assert_eq!(items, vec![1, 2, 4]);

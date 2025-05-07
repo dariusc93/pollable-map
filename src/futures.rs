@@ -1,6 +1,8 @@
 pub mod optional;
 pub mod ordered;
 pub mod set;
+pub mod timeout_map;
+pub mod timeout_set;
 
 use crate::common::InnerMap;
 use futures::stream::{FusedStream, FuturesUnordered};

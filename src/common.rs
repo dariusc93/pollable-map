@@ -1,7 +1,10 @@
-use futures::Stream;
+use futures::{FutureExt, Stream, StreamExt};
+use futures_timeout::{Timeout, TimeoutExt};
 use std::future::Future;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 pub struct InnerMap<K, S> {
     key: K,
@@ -121,5 +124,46 @@ where
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+pub struct Timed<F>(Timeout<F>);
+
+impl<F> Deref for Timed<F> {
+    type Target = F;
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
+impl<F> DerefMut for Timed<F> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.deref_mut()
+    }
+}
+
+impl<F> Timed<F> {
+    pub(crate) fn new(item: F, timeout: Duration) -> Self {
+        Self(item.timeout(timeout))
+    }
+}
+
+impl<F> Future for Timed<F>
+where
+    F: Future + Unpin,
+{
+    type Output = std::io::Result<F::Output>;
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.0.poll_unpin(cx)
+    }
+}
+
+impl<F> Stream for Timed<F>
+where
+    F: Stream + Unpin,
+{
+    type Item = std::io::Result<F::Item>;
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.0.poll_next_unpin(cx)
     }
 }
