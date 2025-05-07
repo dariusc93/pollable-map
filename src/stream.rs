@@ -1,4 +1,5 @@
 pub mod optional;
+pub mod set;
 
 use crate::common::InnerMap;
 use futures::stream::{FusedStream, SelectAll};
