@@ -2,6 +2,7 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
 use super::StreamMap;
+use futures::stream::FusedStream;
 use std::task::{Context, Poll};
 
 pub struct StreamSet<S> {
@@ -94,5 +95,14 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.map.size_hint()
+    }
+}
+
+impl<S> FusedStream for StreamSet<S>
+where
+    S: Stream + Send + Unpin + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.map.is_terminated()
     }
 }

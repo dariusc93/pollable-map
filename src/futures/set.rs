@@ -2,6 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use super::FutureMap;
+use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
 use std::task::{Context, Poll};
 
@@ -95,5 +96,14 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.map.size_hint()
+    }
+}
+
+impl<S> FusedStream for FutureSet<S>
+where
+    S: Future + Send + Unpin + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.map.is_terminated()
     }
 }

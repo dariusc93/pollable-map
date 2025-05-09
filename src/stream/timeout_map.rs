@@ -1,5 +1,6 @@
 use crate::common::Timed;
 use crate::stream::StreamMap;
+use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -57,5 +58,15 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.map.size_hint()
+    }
+}
+
+impl<K, S> FusedStream for TimeoutStreamMap<K, S>
+where
+    K: Clone + PartialEq + Send + Unpin + 'static,
+    S: Stream + Send + Unpin + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.map.is_terminated()
     }
 }

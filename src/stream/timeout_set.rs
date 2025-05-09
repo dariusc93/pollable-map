@@ -1,5 +1,6 @@
 use crate::common::Timed;
 use crate::stream::set::StreamSet;
+use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -53,5 +54,14 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.set.size_hint()
+    }
+}
+
+impl<S> FusedStream for TimeoutStreamSet<S>
+where
+    S: Stream + Send + Unpin + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.set.is_terminated()
     }
 }

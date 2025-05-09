@@ -1,5 +1,6 @@
 use crate::common::Timed;
 use crate::futures::set::FutureSet;
+use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
@@ -54,5 +55,14 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.set.size_hint()
+    }
+}
+
+impl<F> FusedStream for TimeoutFutureSet<F>
+where
+    F: Future + Send + Unpin + 'static,
+{
+    fn is_terminated(&self) -> bool {
+        self.set.is_terminated()
     }
 }
