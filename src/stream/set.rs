@@ -33,8 +33,8 @@ where
 
     /// Insert a stream into the set of streams.
     pub fn insert(&mut self, stream: S) -> bool {
-        let id = self.id.wrapping_add(1);
-        self.map.insert(id, stream)
+        self.id = self.id.wrapping_add(1);
+        self.map.insert(self.id, stream)
     }
 
     /// An iterator visiting all streams in arbitrary order.

@@ -34,8 +34,8 @@ where
 
     /// Insert a future into the set of futures.
     pub fn insert(&mut self, fut: S) -> bool {
-        let id = self.id.wrapping_add(1);
-        self.map.insert(id, fut)
+        self.id = self.id.wrapping_add(1);
+        self.map.insert(self.id, fut)
     }
 
     /// An iterator visiting all futures in arbitrary order.
