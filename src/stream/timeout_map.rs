@@ -70,3 +70,40 @@ where
         self.map.is_terminated()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::stream::timeout_map::TimeoutStreamMap;
+    use futures::StreamExt;
+    use std::time::Duration;
+
+    #[test]
+    fn timeout_map() {
+        let mut list = TimeoutStreamMap::new(Duration::from_millis(100));
+        assert!(list.insert(0, futures::stream::pending::<()>()));
+
+        futures::executor::block_on(async move {
+            let result = list.next().await;
+            let Some((0, Err(e))) = result else {
+                unreachable!("result is err");
+            };
+
+            assert_eq!(e.kind(), std::io::ErrorKind::TimedOut);
+        });
+    }
+
+    #[test]
+    fn valid_stream() {
+        let mut list = TimeoutStreamMap::new(Duration::from_secs(10));
+        assert!(list.insert(1, futures::stream::once(async { 0 }).boxed()));
+
+        futures::executor::block_on(async move {
+            let result = list.next().await;
+            let Some((1, Ok(val))) = result else {
+                unreachable!("result is err");
+            };
+
+            assert_eq!(val, 0);
+        });
+    }
+}

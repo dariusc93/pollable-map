@@ -219,3 +219,37 @@ where
         self.list.is_terminated()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::futures::FutureMap;
+    use futures::future::pending;
+    use futures::StreamExt;
+    use std::task::Poll;
+
+    #[test]
+    fn existing_key() {
+        let mut map = FutureMap::new();
+        assert!(map.insert(1, pending::<()>()));
+        assert!(!map.insert(1, pending::<()>()));
+    }
+
+    #[test]
+    fn poll_multiple_keyed_streams() {
+        let mut map = FutureMap::new();
+        map.insert(1, futures::future::ready(10));
+        map.insert(2, futures::future::ready(20));
+        map.insert(3, futures::future::ready(30));
+
+        futures::executor::block_on(async move {
+            assert_eq!(map.next().await, Some((1, 10)));
+            assert_eq!(map.next().await, Some((2, 20)));
+            assert_eq!(map.next().await, Some((3, 30)));
+            assert_eq!(map.next().await, None);
+            let pending =
+                futures::future::poll_fn(|cx| Poll::Ready(map.poll_next_unpin(cx).is_pending()))
+                    .await;
+            assert!(pending);
+        })
+    }
+}

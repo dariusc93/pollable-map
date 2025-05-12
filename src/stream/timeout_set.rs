@@ -65,3 +65,40 @@ where
         self.set.is_terminated()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::stream::timeout_set::TimeoutStreamSet;
+    use futures::StreamExt;
+    use std::time::Duration;
+
+    #[test]
+    fn timeout_set() {
+        let mut list = TimeoutStreamSet::new(Duration::from_millis(100));
+        assert!(list.insert(futures::stream::pending::<()>()));
+
+        futures::executor::block_on(async move {
+            let result = list.next().await;
+            let Some(Err(e)) = result else {
+                unreachable!("result is err");
+            };
+
+            assert_eq!(e.kind(), std::io::ErrorKind::TimedOut);
+        });
+    }
+
+    #[test]
+    fn valid_stream() {
+        let mut list = TimeoutStreamSet::new(Duration::from_secs(10));
+        assert!(list.insert(futures::stream::once(async { 0 }).boxed()));
+
+        futures::executor::block_on(async move {
+            let result = list.next().await;
+            let Some(Ok(val)) = result else {
+                unreachable!("result is err");
+            };
+
+            assert_eq!(val, 0);
+        });
+    }
+}

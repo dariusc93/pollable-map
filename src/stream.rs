@@ -232,3 +232,90 @@ where
         self.list.is_terminated()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::stream::StreamMap;
+    use futures::stream::empty;
+    use futures::{Stream, StreamExt};
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    struct Once<T> {
+        value: T,
+    }
+
+    impl<T> Once<T> {
+        pub fn new(value: T) -> Self {
+            Self { value }
+        }
+
+        pub fn get(&self) -> &T {
+            &self.value
+        }
+
+        pub fn set(&mut self, val: T) {
+            self.value = val;
+        }
+    }
+
+    impl<T> Stream for Once<T>
+    where
+        T: Unpin,
+    {
+        type Item = T;
+        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Poll::Pending
+        }
+    }
+
+    #[test]
+    fn existing_key() {
+        let mut map = StreamMap::new();
+        assert!(map.insert(1, empty::<()>()));
+        assert!(!map.insert(1, empty::<()>()));
+    }
+
+    #[test]
+    fn poll_multiple_keyed_streams() {
+        let mut map = StreamMap::new();
+        map.insert(1, futures::stream::once(async { 10 }).boxed());
+        map.insert(2, futures::stream::once(async { 20 }).boxed());
+
+        map.insert(3, futures::stream::iter(vec![30, 40, 50]).boxed());
+
+        futures::executor::block_on(async move {
+            assert_eq!(map.next().await, Some((1, 10)));
+            assert_eq!(map.next().await, Some((2, 20)));
+            assert_eq!(map.next().await, Some((3, 30)));
+            assert_eq!(map.next().await, Some((3, 40)));
+            assert_eq!(map.next().await, Some((3, 50)));
+            assert_eq!(map.next().await, None);
+            let pending =
+                futures::future::poll_fn(|cx| Poll::Ready(map.poll_next_unpin(cx).is_pending()))
+                    .await;
+            assert!(pending);
+        })
+    }
+
+    #[test]
+    fn get_from_map() {
+        let mut map = StreamMap::new();
+        map.insert(1, Once::new(10));
+        map.insert(2, Once::new(20));
+
+        {
+            let value0 = map.get(&1).expect("valid entry").get();
+            let value1 = map.get(&2).expect("valid entry").get();
+
+            assert_eq!(value0, &10);
+            assert_eq!(value1, &20);
+        }
+
+        {
+            map.get_mut(&1).expect("valid entry").set(100);
+            let value0 = map.get(&1).expect("valid entry").get();
+            assert_eq!(*value0, 100);
+        }
+    }
+}

@@ -106,3 +106,23 @@ where
         self.map.is_terminated()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::stream::set::StreamSet;
+    use futures::StreamExt;
+
+    #[test]
+    fn valid_stream_set() {
+        let mut list = StreamSet::new();
+        assert!(list.insert(futures::stream::once(async { 0 }).boxed()));
+        assert!(list.insert(futures::stream::once(async { 1 }).boxed()));
+
+        futures::executor::block_on(async move {
+            let val = list.next().await;
+            assert_eq!(val, Some(0));
+            let val = list.next().await;
+            assert_eq!(val, Some(1));
+        });
+    }
+}
