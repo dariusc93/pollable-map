@@ -5,9 +5,9 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
-/// A reusable future or stream that is the equivalent to an `Option`.
+/// A reusable future or stream based on `Option`.
 ///
-/// By default, `Optional` will be empty, which would return [`Poll::Pending`] when polled,
+/// By default, `Optional` will be empty, similar to `Option::None`, which would return [`Poll::Pending`] when polled,
 /// but if a [`Future`] or [`Stream`] is supplied either upon construction via [`Optional::new`] or
 /// is set via [`Optional::replace`], it would then be polled once [`Optional`]
 /// is polled. Once the future is polled to completion, the results will be returned, with
@@ -44,8 +44,13 @@ impl<T> From<T> for Optional<T> {
 }
 
 impl<T> Optional<T> {
-    /// Construct a new `OptionalFuture` with an existing `Future`.
-    pub fn new(future: T) -> Self {
+    /// Construct a new [`Optional`] with an existing [`Future`] or [`Stream`].
+    pub fn new(task: T) -> Self {
+        Self {
+            task: Some(task),
+            waker: None,
+        }
+    }
         Self {
             task: Some(future),
             waker: None,
@@ -53,6 +58,8 @@ impl<T> Optional<T> {
     }
 
     /// Takes the future out, leaving the OptionalFuture empty.
+
+    /// Takes the future or stream out, leaving the [`Optional`] empty.
     pub fn take(&mut self) -> Option<T> {
         let fut = self.task.take();
         if let Some(waker) = self.waker.take() {
@@ -61,27 +68,27 @@ impl<T> Optional<T> {
         fut
     }
 
-    /// Returns true if future still exist.
+    /// Returns true if the future or stream or stream still exist.
     pub fn is_some(&self) -> bool {
         self.task.is_some()
     }
 
-    /// Returns false if future doesnt exist or has been completed.
+    /// Returns false if the future or stream doesnt exist or has been completed.
     pub fn is_none(&self) -> bool {
         self.task.is_none()
     }
 
-    /// Returns reference of the future.
+    /// Returns reference of the future or stream.
     pub fn as_ref(&self) -> Option<&T> {
         self.task.as_ref()
     }
 
-    /// Returns mutable reference of the future.
+    /// Returns mutable reference of the future or stream.
     pub fn as_mut(&mut self) -> Option<&mut T> {
         self.task.as_mut()
     }
 
-    /// Replaces the current future with a new one, returning the previous future if present.
+    /// Replaces the current the future or stream with a new one, returning the previous value if present.
     pub fn replace(&mut self, task: T) -> Option<T> {
         let fut = self.task.replace(task);
         if let Some(waker) = self.waker.take() {
