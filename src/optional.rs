@@ -68,12 +68,12 @@ impl<T> Optional<T> {
         fut
     }
 
-    /// Returns true if the future or stream or stream still exist.
+    /// Returns true if the future or stream still exist.
     pub fn is_some(&self) -> bool {
         self.task.is_some()
     }
 
-    /// Returns false if the future or stream doesnt exist or has been completed.
+    /// Returns false if the future or stream doesn't exist or has been completed.
     pub fn is_none(&self) -> bool {
         self.task.is_none()
     }
