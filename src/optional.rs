@@ -51,13 +51,22 @@ impl<T> Optional<T> {
             waker: None,
         }
     }
-        Self {
-            task: Some(future),
-            waker: None,
-        }
+
+    /// Construct a new [`Optional`] with an existing [`Future`].
+    pub fn with_future(future: T) -> Self
+    where
+        T: Future,
+    {
+        Self::new(future)
     }
 
-    /// Takes the future out, leaving the OptionalFuture empty.
+    /// Construct a new [`Optional`] with an existing [`Stream`].
+    pub fn with_stream(stream: T) -> Self
+    where
+        T: Stream,
+    {
+        Self::new(stream)
+    }
 
     /// Takes the future or stream out, leaving the [`Optional`] empty.
     pub fn take(&mut self) -> Option<T> {
