@@ -105,6 +105,22 @@ impl<T> Optional<T> {
         }
         fut
     }
+
+    /// Returns a constructed `Option<Pin<&mut T>>`.
+    pub fn as_pin_mut(&mut self) -> Option<Pin<&mut T>>
+    where
+        T: Unpin,
+    {
+        self.task.as_mut().map(Pin::new)
+    }
+
+    /// Returns a constructed `Option<Pin<&T>>`.
+    pub fn as_pin_ref(&self) -> Option<Pin<&T>>
+    where
+        T: Unpin,
+    {
+        self.task.as_ref().map(Pin::new)
+    }
 }
 
 impl<F> Future for Optional<F>
@@ -114,12 +130,12 @@ where
     type Output = F::Output;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let Some(future) = self.task.as_mut() else {
+        let Some(future) = self.as_pin_mut() else {
             self.waker.replace(cx.waker().clone());
             return Poll::Pending;
         };
 
-        match Pin::new(future).poll(cx) {
+        match future.poll(cx) {
             Poll::Ready(output) => {
                 self.task.take();
                 Poll::Ready(output)
@@ -148,12 +164,12 @@ where
     type Item = S::Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let Some(stream) = self.task.as_mut() else {
+        let Some(stream) = self.as_pin_mut() else {
             self.waker.replace(cx.waker().clone());
             return Poll::Pending;
         };
 
-        match Pin::new(stream).poll_next(cx) {
+        match stream.poll_next(cx) {
             Poll::Ready(Some(output)) => Poll::Ready(Some(output)),
             Poll::Ready(None) => {
                 self.task.take();
