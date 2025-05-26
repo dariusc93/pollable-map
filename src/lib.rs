@@ -2,4 +2,4 @@ pub mod futures;
 pub mod stream;
 
 pub(crate) mod common;
-mod optional;
+pub mod optional;
