@@ -125,7 +125,7 @@ impl<T> Optional<T> {
 
 impl<F> Future for Optional<F>
 where
-    F: Future + Unpin + 'static,
+    F: Future + Unpin,
 {
     type Output = F::Output;
 
@@ -150,7 +150,7 @@ where
 
 impl<F: Future> FusedFuture for Optional<F>
 where
-    F: Future + Unpin + 'static,
+    F: Future + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.task.is_none()
@@ -159,7 +159,7 @@ where
 
 impl<S> Stream for Optional<S>
 where
-    S: Stream + Unpin + 'static,
+    S: Stream + Unpin,
 {
     type Item = S::Item;
 
@@ -192,7 +192,7 @@ where
 
 impl<S> FusedStream for Optional<S>
 where
-    S: Stream + Unpin + 'static,
+    S: Stream + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.task.is_none()
