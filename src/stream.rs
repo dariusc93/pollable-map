@@ -131,6 +131,15 @@ where
             .and_then(|st| st.inner_mut())
     }
 
+    /// Returns a muable stream or default value if it does not exist.
+    pub fn get_mut_or_default(&mut self, key: &K) -> &mut T
+    where
+        T: Default,
+    {
+        self.insert(key.clone(), T::default());
+        self.get_mut(key).expect("valid entry")
+    }
+
     /// Returns a pinned stream corresponding to the key.
     pub fn get_pinned(&mut self, key: &K) -> Option<Pin<&mut T>> {
         self.list
