@@ -71,6 +71,9 @@ impl<T> Optional<T> {
     /// Takes the future or stream out, leaving the [`Optional`] empty.
     pub fn take(&mut self) -> Option<T> {
         let fut = self.task.take();
+        // Note: Although we dont have to wake the task, we do it so the task is aware that
+        // the future or stream is no longer valid since it has been taken and returned via
+        // this function.
         if let Some(waker) = self.waker.take() {
             waker.wake();
         }
