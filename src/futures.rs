@@ -182,13 +182,12 @@ where
     type Item = (K, T::Output);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = &mut *self;
         loop {
-            match this.list.poll_next_unpin(cx) {
+            match self.list.poll_next_unpin(cx) {
                 Poll::Ready(Some((key, Some(item)))) => return Poll::Ready(Some((key, item))),
                 // We continue in case there is any progress on the set of streams
                 Poll::Ready(Some((key, None))) => {
-                    this.remove(&key);
+                    self.remove(&key);
                 }
                 Poll::Ready(None) => {
                     // While we could allow the stream to continue to be pending, it would make more sense to notify that the stream
