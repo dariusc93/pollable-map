@@ -52,19 +52,19 @@ impl<K, S> InnerMap<K, S> {
     pub fn take_inner(&mut self) -> Option<S> {
         self.inner.take()
     }
-}
 
-impl<K, S> InnerMap<K, S>
-where
-    K: Unpin + Clone,
-    S: Unpin,
-{
-    pub fn key_value_pin(&mut self) -> Option<(&K, Pin<&mut S>)> {
+    pub fn key_value_pin(&mut self) -> Option<(&K, Pin<&mut S>)>
+    where
+        S: Unpin,
+    {
         let Self { ref key, inner, .. } = self;
         inner.as_mut().map(|s| (key, Pin::new(s)))
     }
 
-    pub fn inner_pin(&mut self) -> Option<Pin<&mut S>> {
+    pub fn inner_pin(&mut self) -> Option<Pin<&mut S>>
+    where
+        S: Unpin,
+    {
         self.inner_mut().map(Pin::new)
     }
 }
