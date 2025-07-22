@@ -127,6 +127,12 @@ where
 
 pub struct Timed<F>(Timeout<F>);
 
+impl<F> Timed<F> {
+    pub(crate) fn into_inner(self) -> F {
+        self.0.into_inner()
+    }
+}
+
 impl<F> Deref for Timed<F> {
     type Target = F;
     fn deref(&self) -> &Self::Target {

@@ -1,3 +1,5 @@
+pub mod timeout;
+
 use futures::future::FusedFuture;
 use futures::stream::FusedStream;
 use futures::Stream;
