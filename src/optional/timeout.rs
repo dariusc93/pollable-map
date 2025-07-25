@@ -1,11 +1,11 @@
 use crate::common::Timed;
 use crate::optional::Optional;
+use core::future::Future;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::time::Duration;
 use futures::Stream;
-use std::future::Future;
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::Duration;
 
 /// A reusable future or stream based on `Option` that will time out after a specific duration as elapse.
 pub struct TimeoutOptional<T> {

@@ -2,8 +2,8 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
 use super::StreamMap;
+use core::task::{Context, Poll};
 use futures::stream::FusedStream;
-use std::task::{Context, Poll};
 
 pub struct StreamSet<S> {
     id: i64,

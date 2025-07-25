@@ -1,10 +1,10 @@
-use futures::{FutureExt, Stream, StreamExt};
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use futures::Stream;
+
+#[cfg(feature = "std")]
 use futures_timeout::{Timeout, TimeoutExt};
-use std::future::Future;
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::Duration;
 
 pub struct InnerMap<K, S> {
     key: K,
@@ -125,49 +125,56 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 pub struct Timed<F>(Timeout<F>);
 
+#[cfg(feature = "std")]
 impl<F> Timed<F> {
     pub(crate) fn into_inner(self) -> F {
         self.0.into_inner()
     }
 }
 
-impl<F> Deref for Timed<F> {
+#[cfg(feature = "std")]
+impl<F> core::ops::Deref for Timed<F> {
     type Target = F;
     fn deref(&self) -> &Self::Target {
         self.0.deref()
     }
 }
 
-impl<F> DerefMut for Timed<F> {
+#[cfg(feature = "std")]
+impl<F> core::ops::DerefMut for Timed<F> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.deref_mut()
     }
 }
 
+#[cfg(feature = "std")]
 impl<F> Timed<F> {
-    pub(crate) fn new(item: F, timeout: Duration) -> Self {
+    pub(crate) fn new(item: F, timeout: core::time::Duration) -> Self {
         Self(item.timeout(timeout))
     }
 }
 
+#[cfg(feature = "std")]
 impl<F> Future for Timed<F>
 where
     F: Future + Unpin,
 {
     type Output = std::io::Result<F::Output>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.0.poll_unpin(cx)
+        Pin::new(&mut self.0).poll(cx)
     }
 }
 
+#[cfg(feature = "std")]
 impl<F> Stream for Timed<F>
 where
     F: Stream + Unpin,
 {
     type Item = std::io::Result<F::Item>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.0.poll_next_unpin(cx)
+        Pin::new(&mut self.0).poll_next(cx)
     }
 }

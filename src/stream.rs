@@ -4,10 +4,10 @@ pub mod timeout_map;
 pub mod timeout_set;
 
 use crate::common::InnerMap;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::stream::{FusedStream, SelectAll};
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 /// Combining multiple streams into one, with each stream having a unique key.
 pub struct StreamMap<K, S> {

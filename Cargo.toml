@@ -8,10 +8,15 @@ repository = "https://github.com/dariusc93/pollable-map"
 authors = ["Darius Clark"]
 exclude = [".gitignore"]
 
+[features]
+default = ["std", "alloc"]
+std = ["futures/std", "futures-timeout"]
+alloc = ["futures/alloc"]
+
 
 [dependencies]
-futures = { version = "0.3.31", default-features = false, features = ["std", "alloc", "async-await"] }
-futures-timeout = "0.1.3"
+futures = { version = "0.3.31", default-features = false, features = ["async-await"] }
+futures-timeout = { version = "0.1.3", optional = true }
 
 [dev-dependencies]
 futures = { version = "0.3.31", default-features = false, features = ["std", "alloc", "async-await", "thread-pool", "executor"] }

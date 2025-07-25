@@ -1,11 +1,11 @@
 use crate::common::Timed;
 use crate::stream::StreamMap;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::time::Duration;
 use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::Duration;
 
 pub struct TimeoutStreamMap<K, S> {
     duration: Duration,

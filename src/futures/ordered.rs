@@ -1,8 +1,8 @@
+use alloc::collections::VecDeque;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::Stream;
-use std::collections::VecDeque;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 /// An unbounded queue of futures imposed a FIFO order while polling one future at a time
 /// and returning the output to stream before popping the next future in queue to be polled.

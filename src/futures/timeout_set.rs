@@ -1,12 +1,12 @@
 use crate::common::Timed;
 use crate::futures::set::FutureSet;
+use core::future::Future;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::time::Duration;
 use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
-use std::future::Future;
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::Duration;
 
 pub struct TimeoutFutureSet<S> {
     duration: Duration,

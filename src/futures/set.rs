@@ -1,10 +1,10 @@
-use std::future::Future;
-use std::pin::Pin;
+use core::future::Future;
+use core::pin::Pin;
 
 use super::FutureMap;
+use core::task::{Context, Poll};
 use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
-use std::task::{Context, Poll};
 
 pub struct FutureSet<S> {
     id: i64,

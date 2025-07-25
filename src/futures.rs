@@ -5,11 +5,11 @@ pub mod timeout_map;
 pub mod timeout_set;
 
 use crate::common::InnerMap;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,
