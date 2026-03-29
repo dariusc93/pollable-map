@@ -12,7 +12,7 @@ pub struct StreamSet<S> {
 
 impl<S> Default for StreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     fn default() -> Self {
         Self::new()
@@ -21,7 +21,7 @@ where
 
 impl<S> StreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     /// Creates an empty ['StreamSet`]
     pub fn new() -> Self {
@@ -70,7 +70,7 @@ where
 
 impl<S> FromIterator<S> for StreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -83,7 +83,7 @@ where
 
 impl<S> Stream for StreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     type Item = S::Item;
 
@@ -100,7 +100,7 @@ where
 
 impl<S> FusedStream for StreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.map.is_terminated()

@@ -28,7 +28,7 @@ impl<S> DerefMut for TimeoutFutureSet<S> {
 
 impl<F> TimeoutFutureSet<F>
 where
-    F: Future + Send + Unpin + 'static,
+    F: Future + Unpin,
 {
     /// Create an empty [`TimeoutFutureSet`]
     pub fn new(duration: Duration) -> Self {
@@ -46,7 +46,7 @@ where
 
 impl<F> Stream for TimeoutFutureSet<F>
 where
-    F: Future + Send + Unpin + 'static,
+    F: Future + Unpin,
 {
     type Item = std::io::Result<F::Output>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -60,7 +60,7 @@ where
 
 impl<F> FusedStream for TimeoutFutureSet<F>
 where
-    F: Future + Send + Unpin + 'static,
+    F: Future + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.set.is_terminated()

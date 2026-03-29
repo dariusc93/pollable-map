@@ -27,7 +27,7 @@ impl<S> DerefMut for TimeoutStreamSet<S> {
 
 impl<S> TimeoutStreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     /// Create an empty ['TimeoutStreamSet']
     pub fn new(duration: Duration) -> Self {
@@ -45,7 +45,7 @@ where
 
 impl<S> Stream for TimeoutStreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     type Item = std::io::Result<S::Item>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -59,7 +59,7 @@ where
 
 impl<S> FusedStream for TimeoutStreamSet<S>
 where
-    S: Stream + Send + Unpin + 'static,
+    S: Stream + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.set.is_terminated()
