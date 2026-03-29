@@ -1,4 +1,4 @@
-#![no_main]
+#![no_std]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
