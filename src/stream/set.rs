@@ -1,5 +1,5 @@
+use core::pin::Pin;
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
 
 use super::StreamMap;
 use core::task::{Context, Poll};

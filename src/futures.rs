@@ -1,7 +1,9 @@
 pub mod optional;
 pub mod ordered;
 pub mod set;
+#[cfg(feature = "std")]
 pub mod timeout_map;
+#[cfg(feature = "std")]
 pub mod timeout_set;
 
 use crate::common::InnerMap;
