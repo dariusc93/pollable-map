@@ -1,13 +1,15 @@
 pub mod optional;
 pub mod set;
+#[cfg(feature = "std")]
 pub mod timeout_map;
+#[cfg(feature = "std")]
 pub mod timeout_set;
 
 use crate::common::InnerMap;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::stream::{FusedStream, SelectAll};
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 /// Combining multiple streams into one, with each stream having a unique key.
 pub struct StreamMap<K, S> {
@@ -19,7 +21,7 @@ pub struct StreamMap<K, S> {
 impl<K, T> Default for StreamMap<K, T>
 where
     K: Clone + Unpin,
-    T: Stream + Send + Unpin + 'static,
+    T: Stream + Unpin,
 {
     fn default() -> Self {
         Self::new()
@@ -29,7 +31,7 @@ where
 impl<K, T> StreamMap<K, T>
 where
     K: Clone + Unpin,
-    T: Stream + Send + Unpin + 'static,
+    T: Stream + Unpin,
 {
     /// Creates an empty [`StreamMap`]
     pub fn new() -> Self {
@@ -43,8 +45,8 @@ where
 
 impl<K, T> StreamMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Stream + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Stream + Unpin,
 {
     /// Insert a stream into the map with a unique key.
     /// The function will return true if the map does not have the key present,
@@ -169,8 +171,8 @@ where
 
 impl<K, T> FromIterator<(K, T)> for StreamMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Stream + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Stream + Unpin,
 {
     fn from_iter<I: IntoIterator<Item = (K, T)>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -183,8 +185,8 @@ where
 
 impl<K, T> Stream for StreamMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Stream + Unpin + Send + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Stream + Unpin,
 {
     type Item = (K, T::Item);
 
@@ -232,8 +234,8 @@ where
 
 impl<K, T> FusedStream for StreamMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Stream + Unpin + Send + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Stream + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.list.is_terminated()
@@ -289,7 +291,7 @@ mod test {
         map.insert(1, futures::stream::once(async { 10 }).boxed());
         map.insert(2, futures::stream::once(async { 20 }).boxed());
 
-        map.insert(3, futures::stream::iter(vec![30, 40, 50]).boxed());
+        map.insert(3, futures::stream::iter(alloc::vec![30, 40, 50]).boxed());
 
         futures::executor::block_on(async move {
             assert_eq!(map.next().await, Some((1, 10)));

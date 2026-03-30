@@ -1,8 +1,8 @@
+use alloc::collections::VecDeque;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::Stream;
-use std::collections::VecDeque;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 /// An unbounded queue of futures imposed a FIFO order while polling one future at a time
 /// and returning the output to stream before popping the next future in queue to be polled.
@@ -57,7 +57,7 @@ impl<F> OrderedFutureSet<F> {
 
 impl<F> FromIterator<F> for OrderedFutureSet<F>
 where
-    F: Future + Send + Unpin + 'static,
+    F: Future + Unpin,
 {
     fn from_iter<T: IntoIterator<Item = F>>(iter: T) -> Self {
         let mut ordered = Self::new();
@@ -70,7 +70,7 @@ where
 
 impl<F> Stream for OrderedFutureSet<F>
 where
-    F: Future + Send + Unpin + 'static,
+    F: Future + Unpin,
 {
     type Item = F::Output;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
@@ -109,6 +109,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::futures::ordered::OrderedFutureSet;
+    use alloc::vec;
+    use alloc::vec::Vec;
     use futures::StreamExt;
 
     #[test]

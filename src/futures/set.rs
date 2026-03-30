@@ -1,10 +1,10 @@
-use std::future::Future;
-use std::pin::Pin;
+use core::future::Future;
+use core::pin::Pin;
 
 use super::FutureMap;
+use core::task::{Context, Poll};
 use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
-use std::task::{Context, Poll};
 
 pub struct FutureSet<S> {
     id: i64,
@@ -13,7 +13,7 @@ pub struct FutureSet<S> {
 
 impl<S> Default for FutureSet<S>
 where
-    S: Future + Send + Unpin + 'static,
+    S: Future + Unpin,
 {
     fn default() -> Self {
         Self::new()
@@ -22,7 +22,7 @@ where
 
 impl<S> FutureSet<S>
 where
-    S: Future + Send + Unpin + 'static,
+    S: Future + Unpin,
 {
     /// Creates an empty ['FutureSet`]
     pub fn new() -> Self {
@@ -71,7 +71,7 @@ where
 
 impl<S> FromIterator<S> for FutureSet<S>
 where
-    S: Future + Send + Unpin + 'static,
+    S: Future + Unpin,
 {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -84,7 +84,7 @@ where
 
 impl<S> Stream for FutureSet<S>
 where
-    S: Future + Send + Unpin + 'static,
+    S: Future + Unpin,
 {
     type Item = S::Output;
 
@@ -101,7 +101,7 @@ where
 
 impl<S> FusedStream for FutureSet<S>
 where
-    S: Future + Send + Unpin + 'static,
+    S: Future + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.map.is_terminated()

@@ -1,11 +1,12 @@
+#[cfg(feature = "std")]
 pub mod timeout;
 
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::future::FusedFuture;
 use futures::stream::FusedStream;
 use futures::Stream;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 /// A reusable future or stream based on `Option`.
 ///

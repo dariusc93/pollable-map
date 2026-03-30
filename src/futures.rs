@@ -1,15 +1,17 @@
 pub mod optional;
 pub mod ordered;
 pub mod set;
+#[cfg(feature = "std")]
 pub mod timeout_map;
+#[cfg(feature = "std")]
 pub mod timeout_set;
 
 use crate::common::InnerMap;
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll, Waker};
 use futures::stream::{FusedStream, FuturesUnordered};
 use futures::{Stream, StreamExt};
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,
@@ -36,8 +38,8 @@ impl<K, T> FutureMap<K, T> {
 
 impl<K, T> FutureMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Future + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Future + Unpin,
 {
     /// Insert a future into the map with a unique key.
     /// The function will return true if the map does not have the key present,
@@ -162,8 +164,8 @@ where
 
 impl<K, T> FromIterator<(K, T)> for FutureMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Future + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Future + Unpin,
 {
     fn from_iter<I: IntoIterator<Item = (K, T)>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -176,8 +178,8 @@ where
 
 impl<K, T> Stream for FutureMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Future + Unpin + Send + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Future + Unpin,
 {
     type Item = (K, T::Output);
 
@@ -220,8 +222,8 @@ where
 
 impl<K, T> FusedStream for FutureMap<K, T>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    T: Future + Unpin + Send + 'static,
+    K: Clone + PartialEq + Unpin,
+    T: Future + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.list.is_terminated()

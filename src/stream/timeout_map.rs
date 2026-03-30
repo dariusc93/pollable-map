@@ -1,11 +1,11 @@
 use crate::common::Timed;
 use crate::stream::StreamMap;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::time::Duration;
 use futures::stream::FusedStream;
 use futures::{Stream, StreamExt};
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::Duration;
 
 pub struct TimeoutStreamMap<K, S> {
     duration: Duration,
@@ -27,8 +27,8 @@ impl<K, S> DerefMut for TimeoutStreamMap<K, S> {
 
 impl<K, S> TimeoutStreamMap<K, S>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    S: Stream + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    S: Stream + Unpin,
 {
     /// Create an empty [`TimeoutStreamMap`]
     pub fn new(duration: Duration) -> Self {
@@ -48,8 +48,8 @@ where
 
 impl<K, S> Stream for TimeoutStreamMap<K, S>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    S: Stream + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    S: Stream + Unpin,
 {
     type Item = (K, std::io::Result<S::Item>);
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -63,8 +63,8 @@ where
 
 impl<K, S> FusedStream for TimeoutStreamMap<K, S>
 where
-    K: Clone + PartialEq + Send + Unpin + 'static,
-    S: Stream + Send + Unpin + 'static,
+    K: Clone + PartialEq + Unpin,
+    S: Stream + Unpin,
 {
     fn is_terminated(&self) -> bool {
         self.map.is_terminated()
