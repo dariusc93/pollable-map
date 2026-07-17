@@ -140,7 +140,8 @@ where
 }
 
 #[cfg(all(feature = "std", feature = "timeout"))]
-pub struct Timed<F>(Timeout<F>);
+#[pin_project::pin_project]
+pub struct Timed<F>(#[pin] Timeout<F>);
 
 #[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Timed<F> {
@@ -174,21 +175,23 @@ impl<F> Timed<F> {
 #[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Future for Timed<F>
 where
-    F: Future + Unpin,
+    F: Future,
 {
     type Output = std::io::Result<F::Output>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.0).poll(cx)
+        let this = self.as_mut().project();
+        this.0.poll(cx)
     }
 }
 
 #[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Stream for Timed<F>
 where
-    F: Stream + Unpin,
+    F: Stream,
 {
     type Item = std::io::Result<F::Item>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.0).poll_next(cx)
+        let this = self.as_mut().project();
+        this.0.poll_next(cx)
     }
 }
