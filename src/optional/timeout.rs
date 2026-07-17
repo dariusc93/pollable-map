@@ -8,8 +8,10 @@ use core::time::Duration;
 use futures::Stream;
 
 /// A reusable future or stream based on `Option` that will time out after a specific duration as elapse.
+#[pin_project::pin_project]
 pub struct TimeoutOptional<T> {
     duration: Duration,
+    #[pin]
     task: Optional<Timed<T>>,
 }
 
@@ -46,7 +48,7 @@ impl<T> TimeoutOptional<T> {
     /// Construct a new [`TimeoutOptional`] with an existing [`Future`].
     pub fn new_with_future(duration: Duration, task: T) -> Self
     where
-        T: Future + Unpin,
+        T: Future,
     {
         Self {
             duration,
@@ -57,7 +59,7 @@ impl<T> TimeoutOptional<T> {
     /// Construct a new [`TimeoutOptional`] with an existing [`Stream`].
     pub fn new_with_stream(duration: Duration, task: T) -> Self
     where
-        T: Stream + Unpin,
+        T: Stream,
     {
         Self {
             duration,
@@ -70,28 +72,37 @@ impl<T> TimeoutOptional<T> {
         let prev = self.task.replace(Timed::new(task, self.duration));
         prev.map(|item| item.into_inner())
     }
-}
 
-impl<T: Future + Unpin> Future for TimeoutOptional<T> {
-    type Output = std::io::Result<T::Output>;
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.task).poll(cx)
+    /// Replaces the current future or stream in place without moving the previous value.
+    pub fn set(self: Pin<&mut Self>, task: T) {
+        let this = self.project();
+        this.task.set(Timed::new(task, *this.duration));
     }
 }
 
-impl<T: Stream + Unpin> Stream for TimeoutOptional<T> {
+impl<T: Future> Future for TimeoutOptional<T> {
+    type Output = std::io::Result<T::Output>;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.project();
+        Pin::new(&mut this.task).poll(cx)
+    }
+}
+
+impl<T: Stream> Stream for TimeoutOptional<T> {
     type Item = std::io::Result<T::Item>;
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.task).poll_next(cx)
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        Pin::new(&mut this.task).poll_next(cx)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use crate::optional::timeout::TimeoutOptional;
+    use core::future::pending;
+    use core::pin::Pin;
+    use core::time::Duration;
     use futures::future::ready;
-    use std::future::pending;
-    use std::time::Duration;
 
     #[test]
     fn test_timeout_optional_ready() {
@@ -119,5 +130,26 @@ mod test {
                 Err(e) => panic!("unexpected error: {e}"),
             }
         })
+    }
+
+    #[test]
+    fn reusable_pinned_timeout_optional_future() {
+        async fn value(value: i32) -> i32 {
+            value
+        }
+
+        let task = TimeoutOptional::new_with_future(Duration::from_secs(1), value(0));
+        futures::pin_mut!(task);
+
+        futures::executor::block_on(async {
+            assert_eq!(task.as_mut().await.expect("future should not time out"), 0);
+            assert!(task.is_none());
+
+            task.as_mut().set(value(1));
+            assert!(task.is_some());
+
+            assert_eq!(task.as_mut().await.expect("future should not time out"), 1);
+            assert!(task.is_none());
+        });
     }
 }
