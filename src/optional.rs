@@ -132,12 +132,22 @@ impl<T> Optional<T> {
         self.task.as_mut().map(Pin::new)
     }
 
+    /// Return a constructed `Option<Pin<&mut T>>`.
+    pub fn pinned_as_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
+        self.project().task.as_pin_mut()
+    }
+
     /// Returns a constructed `Option<Pin<&T>>`.
     pub fn as_pin_ref(&self) -> Option<Pin<&T>>
     where
         T: Unpin,
     {
         self.task.as_ref().map(Pin::new)
+    }
+
+    /// Return a constructed `Option<Pin<&T>>`.
+    pub fn pinned_as_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
+        self.project_ref().task.as_pin_ref()
     }
 }
 
@@ -377,5 +387,14 @@ mod test {
         let val = Pin::new(&mut stream).poll_next(&mut Context::from_waker(waker));
         assert_eq!(val, Poll::Ready(None));
         assert!(stream.is_none());
+    }
+
+    #[test]
+    fn pinned_accessors_support_not_unpin() {
+        let optional = Optional::new(async { 42 });
+        futures::pin_mut!(optional);
+
+        assert!(optional.as_ref().pinned_as_ref().is_some());
+        assert!(optional.as_mut().pinned_as_mut().is_some());
     }
 }
