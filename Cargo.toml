@@ -10,8 +10,9 @@ exclude = [".gitignore"]
 
 [features]
 default = ["std", "alloc"]
-std = ["futures/std", "futures-timeout"]
+std = ["futures/std"]
 alloc = ["futures/alloc"]
+timeout = ["std", "dep:futures-timeout"]
 
 
 [dependencies]

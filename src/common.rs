@@ -3,7 +3,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use futures::Stream;
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 use futures_timeout::{Timeout, TimeoutExt};
 
 pub struct InnerMap<K, S> {
@@ -125,17 +125,17 @@ where
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 pub struct Timed<F>(Timeout<F>);
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Timed<F> {
     pub(crate) fn into_inner(self) -> F {
         self.0.into_inner()
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> core::ops::Deref for Timed<F> {
     type Target = F;
     fn deref(&self) -> &Self::Target {
@@ -143,21 +143,21 @@ impl<F> core::ops::Deref for Timed<F> {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> core::ops::DerefMut for Timed<F> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.deref_mut()
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Timed<F> {
     pub(crate) fn new(item: F, timeout: core::time::Duration) -> Self {
         Self(item.timeout(timeout))
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Future for Timed<F>
 where
     F: Future + Unpin,
@@ -168,7 +168,7 @@ where
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Stream for Timed<F>
 where
     F: Stream + Unpin,

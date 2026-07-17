@@ -1,8 +1,8 @@
 pub mod optional;
 pub mod set;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout_map;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout_set;
 
 use crate::common::InnerMap;
@@ -15,6 +15,7 @@ use futures::{Stream, StreamExt};
 pub struct StreamMap<K, S> {
     list: SelectAll<InnerMap<K, S>>,
     empty: bool,
+    terminate_on_empty: bool,
     waker: Option<Waker>,
 }
 
@@ -38,8 +39,14 @@ where
         Self {
             list: SelectAll::new(),
             empty: true,
+            terminate_on_empty: false,
             waker: None,
         }
+    }
+
+    /// Set flag to terminate stream after all streams are completed
+    pub fn set_terminate_on_empty(&mut self, terminate: bool) {
+        self.terminate_on_empty = terminate;
     }
 }
 
@@ -94,7 +101,9 @@ where
 
     /// Returns an iterator visiting all keys in arbitrary order.
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.list.iter().map(|st| st.key())
+        self.list
+            .iter()
+            .filter_map(|st| st.inner().map(|_| st.key()))
     }
 
     /// An iterator visiting all values in arbitrary order.
@@ -109,7 +118,10 @@ where
 
     /// Returns `true` if the map contains a stream for the specified key.
     pub fn contains_key(&self, key: &K) -> bool {
-        self.list.iter().any(|st| st.key().eq(key))
+        self.list
+            .iter()
+            .filter(|st| st.inner().is_some())
+            .any(|st| st.key().eq(key))
     }
 
     /// Clears the map.
@@ -192,6 +204,9 @@ where
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.list.is_empty() {
+            if self.terminate_on_empty {
+                return Poll::Ready(None);
+            }
             self.waker = Some(cx.waker().clone());
             return Poll::Pending;
         }
@@ -238,7 +253,7 @@ where
     T: Stream + Unpin,
 {
     fn is_terminated(&self) -> bool {
-        self.list.is_terminated()
+        self.terminate_on_empty && self.list.is_terminated()
     }
 }
 

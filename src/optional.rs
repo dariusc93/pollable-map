@@ -1,4 +1,4 @@
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout;
 
 use core::future::Future;

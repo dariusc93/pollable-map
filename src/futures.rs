@@ -1,9 +1,9 @@
 pub mod optional;
 pub mod ordered;
 pub mod set;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout_map;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout_set;
 
 use crate::common::InnerMap;
@@ -16,6 +16,7 @@ use futures::{Stream, StreamExt};
 pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,
     empty: bool,
+    terminate_on_empty: bool,
     waker: Option<Waker>,
 }
 
@@ -31,8 +32,14 @@ impl<K, T> FutureMap<K, T> {
         Self {
             list: FuturesUnordered::new(),
             empty: true,
+            terminate_on_empty: false,
             waker: None,
         }
+    }
+
+    /// Set flag to terminate stream after all futures are completed
+    pub fn set_terminate_on_empty(&mut self, terminate: bool) {
+        self.terminate_on_empty = terminate;
     }
 }
 
@@ -87,7 +94,9 @@ where
 
     /// Returns an iterator visiting all keys in arbitrary order.
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.list.iter().map(|st| st.key())
+        self.list
+            .iter()
+            .filter_map(|st| st.inner().map(|_| st.key()))
     }
 
     /// An iterator visiting all values in arbitrary order.
@@ -102,7 +111,10 @@ where
 
     /// Returns `true` if the map contains a future for the specified key.
     pub fn contains_key(&self, key: &K) -> bool {
-        self.list.iter().any(|st| st.key().eq(key))
+        self.list
+            .iter()
+            .filter(|st| st.inner().is_some())
+            .any(|st| st.key().eq(key))
     }
 
     /// Clears the map.
@@ -199,6 +211,9 @@ where
                     // We do this so that we are not returning `Poll::Ready(None)` each time the map is polled
                     // as that may be seen as UB and may cause an increase in cpu usage
                     if self.empty {
+                        if self.terminate_on_empty {
+                            return Poll::Ready(None);
+                        }
                         self.waker = Some(cx.waker().clone());
                         return Poll::Pending;
                     }
@@ -226,7 +241,7 @@ where
     T: Future + Unpin,
 {
     fn is_terminated(&self) -> bool {
-        self.list.is_terminated()
+        self.terminate_on_empty && self.list.is_terminated()
     }
 }
 
