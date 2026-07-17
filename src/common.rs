@@ -6,8 +6,10 @@ use futures::Stream;
 #[cfg(all(feature = "std", feature = "timeout"))]
 use futures_timeout::{Timeout, TimeoutExt};
 
+#[pin_project::pin_project]
 pub struct InnerMap<K, S> {
     key: K,
+    #[pin]
     inner: Option<S>,
     wake_on_success: bool,
 }
@@ -53,49 +55,47 @@ impl<K, S> InnerMap<K, S> {
         self.inner.take()
     }
 
-    pub fn key_value_pin(&mut self) -> Option<(&K, Pin<&mut S>)>
-    where
-        S: Unpin,
-    {
-        let Self { ref key, inner, .. } = self;
-        inner.as_mut().map(|s| (key, Pin::new(s)))
+    pub fn key_value_pin(self: Pin<&mut Self>) -> Option<(&K, Pin<&mut S>)> {
+        let this = self.project();
+        this.inner.as_pin_mut().map(|inner| (&*this.key, inner))
     }
 
-    pub fn inner_pin(&mut self) -> Option<Pin<&mut S>>
-    where
-        S: Unpin,
-    {
-        self.inner_mut().map(Pin::new)
+    pub fn inner_pin(self: Pin<&mut Self>) -> Option<Pin<&mut S>> {
+        self.project().inner.as_pin_mut()
     }
 }
 
 impl<K, S> Future for InnerMap<K, S>
 where
-    K: Clone + Unpin,
-    S: Future + Unpin,
+    K: Clone,
+    S: Future,
 {
     type Output = (K, Option<S::Output>);
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let Some(st) = self.inner_pin() else {
-            return Poll::Ready((self.key.clone(), None));
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.project();
+
+        let Some(st) = this.inner.as_mut().as_pin_mut() else {
+            return Poll::Ready((this.key.clone(), None));
         };
 
         let output = futures::ready!(st.poll(cx));
-        self.inner.take();
-        Poll::Ready((self.key.clone(), Some(output)))
+        this.inner.set(None);
+        Poll::Ready((this.key.clone(), Some(output)))
     }
 }
 
 impl<K, S> Stream for InnerMap<K, S>
 where
-    K: Clone + Unpin,
-    S: Stream + Unpin,
+    K: Clone,
+    S: Stream,
 {
     type Item = (K, Option<S::Item>);
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let Some(st) = self.inner_pin() else {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        let Some(st) = this.inner.as_mut().as_pin_mut() else {
             // Note: While we could panic for any attempts to poll the stream that doesnt exist or have been terminated,
             //       we opt to just return `Poll::Ready(None)` and letting upstream define how to handle a terminated stream
             //       although in the future this could change as we should not be polling any terminated streams or futures.
@@ -104,21 +104,21 @@ where
 
         match st.poll_next(cx) {
             Poll::Ready(Some(value)) => {
-                if self.wake_on_success {
+                if *this.wake_on_success {
                     // Since we made progress, we should attempt to proceed further by waking up the task
                     // TODO: Find a better way to wake task up without needing to call the waker on every successful result
                     //       from stream
                     cx.waker().wake_by_ref();
                 }
-                Poll::Ready(Some((self.key.clone(), Some(value))))
+                Poll::Ready(Some((this.key.clone(), Some(value))))
             }
             Poll::Ready(None) => {
                 // Note: Although some streams can return a `Poll::Ready(None)`, we will have to assume that the stream is completely finished
                 //       and terminated at this point and that we should not attempt to poll again.
                 //       In the future, we could probably provide a flag that would allow us to take the inner stream or keep it and attempt on polling it again
                 //       without actually terminating it.
-                self.inner.take();
-                Poll::Ready(Some((self.key.clone(), None)))
+                this.inner.set(None);
+                Poll::Ready(Some((this.key.clone(), None)))
             }
             Poll::Pending => Poll::Pending,
         }

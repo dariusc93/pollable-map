@@ -89,7 +89,9 @@ where
 
     /// An iterator visiting all key-value pairs with a pinned valued in arbitrary order
     pub fn iter_pin(&mut self) -> impl Iterator<Item = (&K, Pin<&mut T>)> {
-        self.list.iter_mut().filter_map(|st| st.key_value_pin())
+        self.list
+            .iter_mut()
+            .filter_map(|st| Pin::new(st).key_value_pin())
     }
 
     /// Returns an iterator visiting all keys in arbitrary order.
@@ -152,7 +154,7 @@ where
         self.list
             .iter_mut()
             .find(|st| st.key().eq(key))
-            .and_then(|st| st.inner_pin())
+            .and_then(|st| Pin::new(st).inner_pin())
     }
 
     /// Removes a key from the map, returning the future.
