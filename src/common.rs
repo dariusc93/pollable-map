@@ -23,12 +23,6 @@ impl<K, S> InnerMap<K, S> {
         }
     }
 
-    pub fn set_wake_on_success(&mut self, wake_on_success: bool) -> bool {
-        let prev = self.wake_on_success;
-        self.wake_on_success = wake_on_success;
-        wake_on_success != prev
-    }
-
     pub fn set_wake_on_success_pin(self: Pin<&mut Self>, wake_on_success: bool) -> bool {
         let this = self.project();
         let previous = *this.wake_on_success;
@@ -55,18 +49,9 @@ impl<K, S> InnerMap<K, S> {
         this.inner.as_pin_ref().map(|inner| (this.key, inner))
     }
 
-    pub fn key_value(&self) -> Option<(&K, &S)> {
-        let Self { key, inner, .. } = self;
-        inner.as_ref().map(|st| (key, st))
-    }
-
     pub fn key_value_mut(&mut self) -> Option<(&K, &mut S)> {
         let Self { ref key, inner, .. } = self;
         inner.as_mut().map(|s| (key, s))
-    }
-
-    pub fn inner(&self) -> Option<&S> {
-        self.inner.as_ref()
     }
 
     pub fn inner_mut(&mut self) -> Option<&mut S> {
@@ -75,6 +60,13 @@ impl<K, S> InnerMap<K, S> {
 
     pub fn take_inner(&mut self) -> Option<S> {
         self.inner.take()
+    }
+
+    pub fn take_inner_pin(self: Pin<&mut Self>) -> Option<S>
+    where
+        S: Unpin,
+    {
+        self.project().inner.get_mut().take()
     }
 
     pub fn key_value_pin(self: Pin<&mut Self>) -> Option<(&K, Pin<&mut S>)> {
