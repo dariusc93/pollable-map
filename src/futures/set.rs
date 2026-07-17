@@ -13,7 +13,7 @@ pub struct FutureSet<S> {
 
 impl<S> Default for FutureSet<S>
 where
-    S: Future + Unpin,
+    S: Future,
 {
     fn default() -> Self {
         Self::new()
@@ -22,7 +22,7 @@ where
 
 impl<S> FutureSet<S>
 where
-    S: Future + Unpin,
+    S: Future,
 {
     /// Creates an empty ['FutureSet`]
     pub fn new() -> Self {
@@ -41,11 +41,6 @@ where
     /// An iterator visiting all futures in arbitrary order.
     pub fn iter(&self) -> impl Iterator<Item = &S> {
         self.map.iter().map(|(_, st)| st)
-    }
-
-    /// An iterator visiting all futures mutably in arbitrary order.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut S> {
-        self.map.iter_mut().map(|(_, st)| st)
     }
 
     /// An iterator visiting all futures pinned valued in arbitrary order
@@ -69,9 +64,19 @@ where
     }
 }
 
-impl<S> FromIterator<S> for FutureSet<S>
+impl<S> FutureSet<S>
 where
     S: Future + Unpin,
+{
+    /// An iterator visiting all futures mutably in arbitrary order.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut S> {
+        self.map.iter_mut().map(|(_, st)| st)
+    }
+}
+
+impl<S> FromIterator<S> for FutureSet<S>
+where
+    S: Future,
 {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -84,7 +89,7 @@ where
 
 impl<S> Stream for FutureSet<S>
 where
-    S: Future + Unpin,
+    S: Future,
 {
     type Item = S::Output;
 
@@ -101,7 +106,7 @@ where
 
 impl<S> FusedStream for FutureSet<S>
 where
-    S: Future + Unpin,
+    S: Future,
 {
     fn is_terminated(&self) -> bool {
         self.map.is_terminated()
@@ -124,6 +129,16 @@ mod test {
             assert_eq!(val, Some(0));
             let val = list.next().await;
             assert_eq!(val, Some(1));
+        });
+    }
+
+    #[test]
+    fn supports_unboxed_async_future() {
+        let mut set = FutureSet::new();
+        assert!(set.insert(async { 42 }));
+
+        futures::executor::block_on(async move {
+            assert_eq!(set.next().await, Some(42));
         });
     }
 }
