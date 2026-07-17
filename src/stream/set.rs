@@ -12,7 +12,7 @@ pub struct StreamSet<S> {
 
 impl<S> Default for StreamSet<S>
 where
-    S: Stream + Unpin,
+    S: Stream,
 {
     fn default() -> Self {
         Self::new()
@@ -21,7 +21,7 @@ where
 
 impl<S> StreamSet<S>
 where
-    S: Stream + Unpin,
+    S: Stream,
 {
     /// Creates an empty ['StreamSet`]
     pub fn new() -> Self {
@@ -40,11 +40,6 @@ where
     /// An iterator visiting all streams in arbitrary order.
     pub fn iter(&self) -> impl Iterator<Item = &S> {
         self.map.iter().map(|(_, st)| st)
-    }
-
-    /// An iterator visiting all streams mutably in arbitrary order.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut S> {
-        self.map.iter_mut().map(|(_, st)| st)
     }
 
     /// An iterator visiting all streams pinned valued in arbitrary order
@@ -68,9 +63,19 @@ where
     }
 }
 
-impl<S> FromIterator<S> for StreamSet<S>
+impl<S> StreamSet<S>
 where
     S: Stream + Unpin,
+{
+    /// An iterator visiting all streams mutably in arbitrary order.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut S> {
+        self.map.iter_mut().map(|(_, st)| st)
+    }
+}
+
+impl<S> FromIterator<S> for StreamSet<S>
+where
+    S: Stream,
 {
     fn from_iter<I: IntoIterator<Item = S>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -83,7 +88,7 @@ where
 
 impl<S> Stream for StreamSet<S>
 where
-    S: Stream + Unpin,
+    S: Stream,
 {
     type Item = S::Item;
 
@@ -100,7 +105,7 @@ where
 
 impl<S> FusedStream for StreamSet<S>
 where
-    S: Stream + Unpin,
+    S: Stream,
 {
     fn is_terminated(&self) -> bool {
         self.map.is_terminated()
@@ -123,6 +128,22 @@ mod test {
             assert_eq!(val, Some(0));
             let val = list.next().await;
             assert_eq!(val, Some(1));
+        });
+    }
+
+    #[test]
+    fn supports_unboxed_async_stream() {
+        let mut set = StreamSet::new();
+        let stream = futures::stream::unfold(0, |value| async move {
+            (value < 3).then_some((value, value + 1))
+        });
+        assert!(set.insert(stream));
+
+        futures::executor::block_on(async move {
+            assert_eq!(set.next().await, Some(0));
+            assert_eq!(set.next().await, Some(1));
+            assert_eq!(set.next().await, Some(2));
+            assert_eq!(set.next().await, None);
         });
     }
 }

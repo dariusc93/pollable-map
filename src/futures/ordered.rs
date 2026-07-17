@@ -6,8 +6,10 @@ use futures::Stream;
 
 /// An unbounded queue of futures imposed a FIFO order while polling one future at a time
 /// and returning the output to stream before popping the next future in queue to be polled.
+#[pin_project::pin_project]
 pub struct OrderedFutureSet<F> {
     queue: VecDeque<F>,
+    #[pin]
     current_future: Option<F>,
     waker: Option<Waker>,
 }
@@ -36,10 +38,29 @@ impl<F> OrderedFutureSet<F> {
         }
     }
 
+    /// Push a future to the back of a pinned queue.
+    pub fn push_pinned(self: Pin<&mut Self>, fut: F) {
+        let this = self.project();
+        this.queue.push_back(fut);
+        if let Some(waker) = this.waker.take() {
+            waker.wake();
+        }
+    }
+
     /// Remove a future from the front of the queue
     pub fn pop_front(&mut self) -> Option<F> {
         let fut = self.queue.pop_front();
         if let Some(waker) = self.waker.take() {
+            waker.wake();
+        }
+        fut
+    }
+
+    /// Remove a future from the front of a pinned queue.
+    pub fn pop_front_pinned(self: Pin<&mut Self>) -> Option<F> {
+        let this = self.project();
+        let fut = this.queue.pop_front();
+        if let Some(waker) = this.waker.take() {
             waker.wake();
         }
         fut
@@ -53,12 +74,19 @@ impl<F> OrderedFutureSet<F> {
         }
         fut
     }
+
+    /// Remove a future from the back of a pinned queue.
+    pub fn pop_back_pinned(self: Pin<&mut Self>) -> Option<F> {
+        let this = self.project();
+        let fut = this.queue.pop_back();
+        if let Some(waker) = this.waker.take() {
+            waker.wake();
+        }
+        fut
+    }
 }
 
-impl<F> FromIterator<F> for OrderedFutureSet<F>
-where
-    F: Future + Unpin,
-{
+impl<F> FromIterator<F> for OrderedFutureSet<F> {
     fn from_iter<T: IntoIterator<Item = F>>(iter: T) -> Self {
         let mut ordered = Self::new();
         for fut in iter {
@@ -70,39 +98,44 @@ where
 
 impl<F> Stream for OrderedFutureSet<F>
 where
-    F: Future + Unpin,
+    F: Future,
 {
     type Item = F::Output;
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let this = &mut *self;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
 
-        loop {
-            if this.current_future.is_none() {
-                let Some(fut) = this.queue.pop_front() else {
-                    break;
-                };
-                this.current_future.replace(fut);
-            }
-
-            match this.current_future.as_mut() {
-                Some(fut) => {
-                    let output = futures::ready!(Pin::new(fut).poll(cx));
-                    this.current_future.take();
-                    cx.waker().wake_by_ref();
-                    return Poll::Ready(Some(output));
-                }
-                None => {
-                    this.waker.replace(cx.waker().clone());
-                }
-            }
+        if this.current_future.as_ref().get_ref().is_none() {
+            let Some(fut) = this.queue.pop_front() else {
+                this.waker.replace(cx.waker().clone());
+                return Poll::Pending;
+            };
+            this.current_future.set(Some(fut));
         }
 
-        this.waker.replace(cx.waker().clone());
-        Poll::Pending
+        let fut = this
+            .current_future
+            .as_mut()
+            .as_pin_mut()
+            .expect("current future was initialized");
+
+        match fut.poll(cx) {
+            Poll::Ready(output) => {
+                this.current_future.set(None);
+                cx.waker().wake_by_ref();
+                Poll::Ready(Some(output))
+            }
+            Poll::Pending => {
+                this.waker.replace(cx.waker().clone());
+                Poll::Pending
+            }
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.queue.len(), None)
+        (
+            self.queue.len() + usize::from(self.current_future.is_some()),
+            None,
+        )
     }
 }
 
@@ -166,5 +199,25 @@ mod tests {
 
             assert_eq!(items, vec![1, 2, 4]);
         })
+    }
+
+    #[test]
+    fn supports_unboxed_async_futures() {
+        async fn value(value: u8) -> u8 {
+            value
+        }
+
+        futures::executor::block_on(async move {
+            let mut fifo = OrderedFutureSet::new();
+            fifo.push(value(1));
+            fifo.push(value(2));
+            futures::pin_mut!(fifo);
+
+            assert_eq!(fifo.as_mut().next().await, Some(1));
+            assert_eq!(fifo.as_mut().next().await, Some(2));
+
+            fifo.as_mut().push_pinned(value(3));
+            assert_eq!(fifo.as_mut().next().await, Some(3));
+        });
     }
 }
