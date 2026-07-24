@@ -22,7 +22,7 @@ fn main() {
         );
 
         while let Some((key, _)) = st_map.next().await {
-            println!("> future \"{}\" is finished", key);
+            println!("> stream \"{}\" is finished", key);
         }
 
         println!("Done processing map")
