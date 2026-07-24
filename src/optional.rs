@@ -7,6 +7,7 @@ use core::task::{Context, Poll, Waker};
 use futures::future::FusedFuture;
 use futures::stream::FusedStream;
 use futures::Stream;
+use pin_project::pin_project;
 
 /// A reusable future or stream based on `Option`.
 ///
@@ -15,12 +16,12 @@ use futures::Stream;
 /// is set via [`Optional::replace`], it would then be polled once [`Optional`]
 /// is polled. Once the future is polled to completion, the results will be returned, with
 /// [`Optional`] being empty.
+#[pin_project]
 pub struct Optional<T> {
+    #[pin]
     task: Option<T>,
     waker: Option<Waker>,
 }
-
-impl<T: Unpin> Unpin for Optional<T> {}
 
 impl<T> Default for Optional<T> {
     fn default() -> Self {
@@ -112,12 +113,28 @@ impl<T> Optional<T> {
         fut
     }
 
+    /// Replaces the current future or stream in place without moving the previous value.
+    pub fn set(self: Pin<&mut Self>, task: T) {
+        let mut this = self.project();
+
+        this.task.set(Some(task));
+
+        if let Some(waker) = this.waker.take() {
+            waker.wake();
+        }
+    }
+
     /// Returns a constructed `Option<Pin<&mut T>>`.
     pub fn as_pin_mut(&mut self) -> Option<Pin<&mut T>>
     where
         T: Unpin,
     {
         self.task.as_mut().map(Pin::new)
+    }
+
+    /// Return a constructed `Option<Pin<&mut T>>`.
+    pub fn pinned_as_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
+        self.project().task.as_pin_mut()
     }
 
     /// Returns a constructed `Option<Pin<&T>>`.
@@ -127,27 +144,33 @@ impl<T> Optional<T> {
     {
         self.task.as_ref().map(Pin::new)
     }
+
+    /// Return a constructed `Option<Pin<&T>>`.
+    pub fn pinned_as_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
+        self.project_ref().task.as_pin_ref()
+    }
 }
 
 impl<F> Future for Optional<F>
 where
-    F: Future + Unpin,
+    F: Future,
 {
     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let Some(future) = self.as_pin_mut() else {
-            self.waker.replace(cx.waker().clone());
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let mut this = self.project();
+        let Some(future) = this.task.as_mut().as_pin_mut() else {
+            this.waker.replace(cx.waker().clone());
             return Poll::Pending;
         };
 
         match future.poll(cx) {
             Poll::Ready(output) => {
-                self.task.take();
+                this.task.set(None);
                 Poll::Ready(output)
             }
             Poll::Pending => {
-                self.waker.replace(cx.waker().clone());
+                this.waker.replace(cx.waker().clone());
                 Poll::Pending
             }
         }
@@ -156,7 +179,7 @@ where
 
 impl<F: Future> FusedFuture for Optional<F>
 where
-    F: Future + Unpin,
+    F: Future,
 {
     fn is_terminated(&self) -> bool {
         self.task.is_none()
@@ -165,24 +188,25 @@ where
 
 impl<S> Stream for Optional<S>
 where
-    S: Stream + Unpin,
+    S: Stream,
 {
     type Item = S::Item;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let Some(stream) = self.as_pin_mut() else {
-            self.waker.replace(cx.waker().clone());
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        let Some(stream) = this.task.as_mut().as_pin_mut() else {
+            this.waker.replace(cx.waker().clone());
             return Poll::Pending;
         };
 
         match stream.poll_next(cx) {
             Poll::Ready(Some(output)) => Poll::Ready(Some(output)),
             Poll::Ready(None) => {
-                self.task.take();
+                this.task.set(None);
                 Poll::Ready(None)
             }
             Poll::Pending => {
-                self.waker.replace(cx.waker().clone());
+                this.waker.replace(cx.waker().clone());
                 Poll::Pending
             }
         }
@@ -198,7 +222,7 @@ where
 
 impl<S> FusedStream for Optional<S>
 where
-    S: Stream + Unpin,
+    S: Stream,
 {
     fn is_terminated(&self) -> bool {
         self.task.is_none()
@@ -236,6 +260,29 @@ mod test {
 
         let val = Pin::new(&mut future).poll(&mut Context::from_waker(waker));
         assert_eq!(val, Poll::Ready(1));
+        assert!(future.is_none());
+    }
+
+    #[test]
+    fn reusable_pinned_optional_future() {
+        async fn set_value(value: i32) -> i32 {
+            value
+        }
+
+        let future = Optional::new(set_value(0));
+        futures::pin_mut!(future);
+        assert!(future.is_some());
+        let waker = futures::task::noop_waker_ref();
+
+        let value = future.as_mut().poll(&mut Context::from_waker(waker));
+        assert_eq!(value, Poll::Ready(0));
+        assert!(future.is_none());
+
+        future.as_mut().set(set_value(1));
+        assert!(future.is_some());
+
+        let value = future.as_mut().poll(&mut Context::from_waker(waker));
+        assert_eq!(value, Poll::Ready(1));
         assert!(future.is_none());
     }
 
@@ -294,6 +341,37 @@ mod test {
     }
 
     #[test]
+    fn reusable_pinned_optional_stream() {
+        async fn set_val(value: i32) -> i32 {
+            value
+        }
+
+        let stream = Optional::new(futures::stream::once(set_val(0)));
+        futures::pin_mut!(stream);
+        assert!(stream.is_some());
+        let waker = futures::task::noop_waker_ref();
+
+        let val = stream.as_mut().poll_next(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(Some(0)));
+        assert!(stream.is_some());
+
+        let val = stream.as_mut().poll_next(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(None));
+        assert!(stream.is_none());
+
+        stream.as_mut().set(futures::stream::once(set_val(1)));
+        assert!(stream.is_some());
+
+        let val = stream.as_mut().poll_next(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(Some(1)));
+        assert!(stream.is_some());
+
+        let val = stream.as_mut().poll_next(&mut Context::from_waker(waker));
+        assert_eq!(val, Poll::Ready(None));
+        assert!(stream.is_none());
+    }
+
+    #[test]
     fn convert_stream_to_optional_stream() {
         let st = futures::stream::once(async { 0 }).boxed();
 
@@ -309,5 +387,14 @@ mod test {
         let val = Pin::new(&mut stream).poll_next(&mut Context::from_waker(waker));
         assert_eq!(val, Poll::Ready(None));
         assert!(stream.is_none());
+    }
+
+    #[test]
+    fn pinned_accessors_support_not_unpin() {
+        let optional = Optional::new(async { 42 });
+        futures::pin_mut!(optional);
+
+        assert!(optional.as_ref().pinned_as_ref().is_some());
+        assert!(optional.as_mut().pinned_as_mut().is_some());
     }
 }

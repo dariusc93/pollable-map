@@ -28,8 +28,8 @@ impl<K, F> DerefMut for TimeoutFutureMap<K, F> {
 
 impl<K, F> TimeoutFutureMap<K, F>
 where
-    K: Clone + PartialEq + Unpin,
-    F: Future + Unpin,
+    K: Clone + PartialEq,
+    F: Future,
 {
     /// Create an empty [`TimeoutFutureMap`]
     pub fn new(duration: Duration) -> Self {
@@ -49,8 +49,8 @@ where
 
 impl<K, F> Stream for TimeoutFutureMap<K, F>
 where
-    K: Clone + PartialEq + Unpin,
-    F: Future + Unpin,
+    K: Clone + PartialEq,
+    F: Future,
 {
     type Item = (K, std::io::Result<F::Output>);
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -64,8 +64,8 @@ where
 
 impl<K, F> FusedStream for TimeoutFutureMap<K, F>
 where
-    K: Clone + PartialEq + Unpin,
-    F: Future + Unpin,
+    K: Clone + PartialEq,
+    F: Future,
 {
     fn is_terminated(&self) -> bool {
         self.map.is_terminated()
@@ -105,6 +105,20 @@ mod test {
             };
 
             assert_eq!(val, 0);
+        });
+    }
+
+    #[test]
+    fn supports_unboxed_async_future() {
+        let mut map = TimeoutFutureMap::new(Duration::from_secs(1));
+        assert!(map.insert(1, async { 42 }));
+
+        futures::executor::block_on(async move {
+            let Some((1, Ok(val))) = map.next().await else {
+                unreachable!("result is err");
+            };
+
+            assert_eq!(val, 42);
         });
     }
 }

@@ -45,8 +45,8 @@ impl<K, T> FutureMap<K, T> {
 
 impl<K, T> FutureMap<K, T>
 where
-    K: Clone + PartialEq + Unpin,
-    T: Future + Unpin,
+    K: Clone + PartialEq,
+    T: Future,
 {
     /// Insert a future into the map with a unique key.
     /// The function will return true if the map does not have the key present,
@@ -71,50 +71,48 @@ where
     /// Will return false if future does not exist or if value is the same as
     /// previously set.
     pub fn set_wake_on_success(&mut self, key: &K, wake_on_success: bool) -> bool {
-        self.list
-            .iter_mut()
-            .find(|st| st.key().eq(key))
-            .is_some_and(|st| st.set_wake_on_success(wake_on_success))
+        Pin::new(&mut self.list)
+            .iter_pin_mut()
+            .find(|st| st.as_ref().key_pin().eq(key))
+            .is_some_and(|st| st.set_wake_on_success_pin(wake_on_success))
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
     pub fn iter(&self) -> impl Iterator<Item = (&K, &T)> {
-        self.list.iter().filter_map(|st| st.key_value())
-    }
-
-    /// An iterator visiting all key-value pairs mutably in arbitrary order.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
-        self.list.iter_mut().filter_map(|st| st.key_value_mut())
+        Pin::new(&self.list)
+            .iter_pin_ref()
+            .filter_map(|st| st.key_value_pin_ref())
+            .map(|(key, future)| (key, future.get_ref()))
     }
 
     /// An iterator visiting all key-value pairs with a pinned valued in arbitrary order
     pub fn iter_pin(&mut self) -> impl Iterator<Item = (&K, Pin<&mut T>)> {
-        self.list.iter_mut().filter_map(|st| st.key_value_pin())
+        Pin::new(&mut self.list)
+            .iter_pin_mut()
+            .filter_map(|st| st.key_value_pin())
     }
 
     /// Returns an iterator visiting all keys in arbitrary order.
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.list
-            .iter()
-            .filter_map(|st| st.inner().map(|_| st.key()))
+        Pin::new(&self.list)
+            .iter_pin_ref()
+            .filter_map(|st| st.key_value_pin_ref().map(|(key, _)| key))
     }
 
     /// An iterator visiting all values in arbitrary order.
     pub fn values(&self) -> impl Iterator<Item = &T> {
-        self.list.iter().filter_map(|st| st.inner())
-    }
-
-    /// An iterator visiting all values mutably in arbitrary order.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        self.list.iter_mut().filter_map(|st| st.inner_mut())
+        Pin::new(&self.list)
+            .iter_pin_ref()
+            .filter_map(|st| st.inner_pin_ref())
+            .map(Pin::get_ref)
     }
 
     /// Returns `true` if the map contains a future for the specified key.
     pub fn contains_key(&self, key: &K) -> bool {
-        self.list
-            .iter()
-            .filter(|st| st.inner().is_some())
-            .any(|st| st.key().eq(key))
+        Pin::new(&self.list)
+            .iter_pin_ref()
+            .filter(|st| st.as_ref().inner_pin_ref().is_some())
+            .any(|st| st.key_pin().eq(key))
     }
 
     /// Clears the map.
@@ -124,13 +122,51 @@ where
 
     /// Returns a reference to the future corresponding to the key.
     pub fn get(&self, key: &K) -> Option<&T> {
-        self.list
-            .iter()
-            .find(|st| st.key().eq(key))
-            .and_then(|st| st.inner())
+        Pin::new(&self.list)
+            .iter_pin_ref()
+            .find(|st| st.as_ref().key_pin().eq(key))
+            .and_then(|st| st.inner_pin_ref())
+            .map(Pin::get_ref)
     }
 
-    /// Returns a mutable future to the value corresponding to the key.
+    /// Returns a pinned future corresponding to the key.
+    pub fn get_pinned(&mut self, key: &K) -> Option<Pin<&mut T>> {
+        Pin::new(&mut self.list)
+            .iter_pin_mut()
+            .find(|st| st.as_ref().key_pin().eq(key))
+            .and_then(|st| st.inner_pin())
+    }
+
+    /// Returns the number of futures in the map.
+    pub fn len(&self) -> usize {
+        Pin::new(&self.list)
+            .iter_pin_ref()
+            .filter(|st| st.as_ref().inner_pin_ref().is_some())
+            .count()
+    }
+
+    /// Return `true` map contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl<K, T> FutureMap<K, T>
+where
+    K: Clone + PartialEq,
+    T: Future + Unpin,
+{
+    /// An iterator visiting all key-value pairs mutably in arbitrary order.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut T)> {
+        self.list.iter_mut().filter_map(|st| st.key_value_mut())
+    }
+
+    /// An iterator visiting all values mutably in arbitrary order.
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.list.iter_mut().filter_map(|st| st.inner_mut())
+    }
+
+    /// Returns a mutable future corresponding to the key.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         self.list
             .iter_mut()
@@ -138,21 +174,13 @@ where
             .and_then(|st| st.inner_mut())
     }
 
-    /// Returns a muable future or default value if it does not exist.
+    /// Returns a mutable future or default value if it does not exist.
     pub fn get_mut_or_default(&mut self, key: &K) -> &mut T
     where
         T: Default,
     {
         self.insert(key.clone(), T::default());
         self.get_mut(key).expect("valid entry")
-    }
-
-    /// Returns a pinned future corresponding to the key.
-    pub fn get_pinned(&mut self, key: &K) -> Option<Pin<&mut T>> {
-        self.list
-            .iter_mut()
-            .find(|st| st.key().eq(key))
-            .and_then(|st| st.inner_pin())
     }
 
     /// Removes a key from the map, returning the future.
@@ -162,22 +190,12 @@ where
             .find(|st| st.key().eq(key))
             .and_then(|st| st.take_inner())
     }
-
-    /// Returns the number of futures in the map.
-    pub fn len(&self) -> usize {
-        self.list.iter().filter(|st| st.inner().is_some()).count()
-    }
-
-    /// Return `true` map contains no elements.
-    pub fn is_empty(&self) -> bool {
-        self.list.is_empty() || self.list.iter().all(|st| st.inner().is_none())
-    }
 }
 
 impl<K, T> FromIterator<(K, T)> for FutureMap<K, T>
 where
-    K: Clone + PartialEq + Unpin,
-    T: Future + Unpin,
+    K: Clone + PartialEq,
+    T: Future,
 {
     fn from_iter<I: IntoIterator<Item = (K, T)>>(iter: I) -> Self {
         let mut maps = Self::new();
@@ -190,8 +208,8 @@ where
 
 impl<K, T> Stream for FutureMap<K, T>
 where
-    K: Clone + PartialEq + Unpin,
-    T: Future + Unpin,
+    K: Clone,
+    T: Future,
 {
     type Item = (K, T::Output);
 
@@ -200,9 +218,7 @@ where
             match self.list.poll_next_unpin(cx) {
                 Poll::Ready(Some((key, Some(item)))) => return Poll::Ready(Some((key, item))),
                 // We continue in case there is any progress on the set of streams
-                Poll::Ready(Some((key, None))) => {
-                    self.remove(&key);
-                }
+                Poll::Ready(Some((_key, None))) => continue,
                 Poll::Ready(None) => {
                     // While we could allow the stream to continue to be pending, it would make more sense to notify that the stream
                     // is empty without needing to explicitly check while polling the actual "map" itself
@@ -237,8 +253,8 @@ where
 
 impl<K, T> FusedStream for FutureMap<K, T>
 where
-    K: Clone + PartialEq + Unpin,
-    T: Future + Unpin,
+    K: Clone,
+    T: Future,
 {
     fn is_terminated(&self) -> bool {
         self.terminate_on_empty && self.list.is_terminated()
@@ -257,6 +273,16 @@ mod test {
         let mut map = FutureMap::new();
         assert!(map.insert(1, pending::<()>()));
         assert!(!map.insert(1, pending::<()>()));
+    }
+
+    #[test]
+    fn supports_unboxed_async_future() {
+        let mut map = FutureMap::new();
+        assert!(map.insert(1, async { 42 }));
+
+        futures::executor::block_on(async move {
+            assert_eq!(map.next().await, Some((1, 42)));
+        });
     }
 
     #[test]
