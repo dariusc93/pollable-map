@@ -30,7 +30,7 @@ impl<S> TimeoutStreamSet<S>
 where
     S: Stream,
 {
-    /// Create an empty ['TimeoutStreamSet']
+    /// Create an empty [`TimeoutStreamSet`]
     pub fn new(duration: Duration) -> Self {
         Self {
             duration,
