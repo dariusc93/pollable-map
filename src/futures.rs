@@ -264,9 +264,9 @@ where
 #[cfg(test)]
 mod test {
     use crate::futures::FutureMap;
+    use core::task::Poll;
     use futures::future::pending;
     use futures::StreamExt;
-    use std::task::Poll;
 
     #[test]
     fn existing_key() {

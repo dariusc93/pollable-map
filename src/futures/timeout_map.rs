@@ -1,4 +1,5 @@
 use crate::common::Timed;
+use crate::error::TimedError;
 use crate::futures::FutureMap;
 use core::future::Future;
 use core::ops::{Deref, DerefMut};
@@ -52,7 +53,7 @@ where
     K: Clone + PartialEq,
     F: Future,
 {
-    type Item = (K, std::io::Result<F::Output>);
+    type Item = (K, Result<F::Output, TimedError>);
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.map.poll_next_unpin(cx)
     }
@@ -74,7 +75,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::futures::timeout_map::TimeoutFutureMap;
+    use crate::{error::TimedError, futures::timeout_map::TimeoutFutureMap};
     use futures::StreamExt;
     use std::time::Duration;
 
@@ -89,7 +90,7 @@ mod test {
                 unreachable!("result is err");
             };
 
-            assert_eq!(e.kind(), std::io::ErrorKind::TimedOut);
+            assert_eq!(e, TimedError);
         });
     }
 

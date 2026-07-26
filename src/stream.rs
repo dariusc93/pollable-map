@@ -275,10 +275,10 @@ where
 #[cfg(test)]
 mod test {
     use crate::stream::StreamMap;
+    use core::pin::Pin;
+    use core::task::{Context, Poll};
     use futures::stream::empty;
     use futures::{Stream, StreamExt};
-    use std::pin::Pin;
-    use std::task::{Context, Poll};
 
     struct Once<T> {
         value: T,

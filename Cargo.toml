@@ -2,8 +2,9 @@
 name = "pollable-map"
 version = "0.1.7"
 edition = "2021"
+rust-version = "1.81"
 license = "Apache-2.0 OR MIT"
-description = "Utilites for storing futures and streams in as a pollable map"
+description = "Utilities for storing futures and streams as a pollable map"
 repository = "https://github.com/dariusc93/pollable-map"
 authors = ["Darius Clark"]
 exclude = [".gitignore"]
@@ -17,8 +18,16 @@ timeout = ["std", "dep:futures-timeout"]
 
 [dependencies]
 futures = { version = "0.3.31", default-features = false, features = ["async-await"] }
-futures-timeout = { version = "0.1.3", optional = true }
+futures-timeout = { version = "0.2.1", optional = true }
 pin-project = "1.1.10"
 
 [dev-dependencies]
 futures = { version = "0.3.31", default-features = false, features = ["std", "alloc", "async-await", "thread-pool", "executor"] }
+
+[[example]]
+name = "fut_map"
+required-features = ["alloc"]
+
+[[example]]
+name = "st_map"
+required-features = ["alloc"]

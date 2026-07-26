@@ -1,4 +1,5 @@
 use crate::common::Timed;
+use crate::error::TimedError;
 use crate::futures::set::FutureSet;
 use core::future::Future;
 use core::ops::{Deref, DerefMut};
@@ -48,7 +49,7 @@ impl<F> Stream for TimeoutFutureSet<F>
 where
     F: Future,
 {
-    type Item = std::io::Result<F::Output>;
+    type Item = Result<F::Output, TimedError>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.set.poll_next_unpin(cx)
     }
@@ -69,7 +70,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::futures::timeout_set::TimeoutFutureSet;
+    use crate::{error::TimedError, futures::timeout_set::TimeoutFutureSet};
     use futures::StreamExt;
     use std::time::Duration;
 
@@ -84,7 +85,7 @@ mod test {
                 unreachable!("result is err");
             };
 
-            assert_eq!(e.kind(), std::io::ErrorKind::TimedOut);
+            assert_eq!(e, TimedError);
         });
     }
 

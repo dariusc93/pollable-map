@@ -4,8 +4,12 @@ use core::task::{Context, Poll};
 use futures::Stream;
 
 #[cfg(all(feature = "std", feature = "timeout"))]
-use futures_timeout::{Timeout, TimeoutExt};
+use futures_timeout::Timeout;
 
+#[cfg(all(feature = "std", feature = "timeout"))]
+use crate::error::TimedError;
+
+#[cfg(feature = "alloc")]
 #[pin_project::pin_project]
 pub struct InnerMap<K, S> {
     key: K,
@@ -14,6 +18,7 @@ pub struct InnerMap<K, S> {
     wake_on_success: bool,
 }
 
+#[cfg(feature = "alloc")]
 impl<K, S> InnerMap<K, S> {
     pub fn new(key: K, inner: S) -> Self {
         Self {
@@ -79,6 +84,7 @@ impl<K, S> InnerMap<K, S> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<K, S> Future for InnerMap<K, S>
 where
     K: Clone,
@@ -99,6 +105,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<K, S> Stream for InnerMap<K, S>
 where
     K: Clone,
@@ -168,7 +175,7 @@ impl<F> core::ops::DerefMut for Timed<F> {
 #[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Timed<F> {
     pub(crate) fn new(item: F, timeout: core::time::Duration) -> Self {
-        Self(item.timeout(timeout))
+        Self(Timeout::new(item, timeout))
     }
 }
 
@@ -177,10 +184,10 @@ impl<F> Future for Timed<F>
 where
     F: Future,
 {
-    type Output = std::io::Result<F::Output>;
+    type Output = Result<F::Output, TimedError>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();
-        this.0.poll(cx)
+        this.0.poll(cx).map_err(|_| TimedError)
     }
 }
 
@@ -189,9 +196,9 @@ impl<F> Stream for Timed<F>
 where
     F: Stream,
 {
-    type Item = std::io::Result<F::Item>;
+    type Item = Result<F::Item, TimedError>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.as_mut().project();
-        this.0.poll_next(cx)
+        this.0.poll_next(cx).map_err(|_| TimedError)
     }
 }

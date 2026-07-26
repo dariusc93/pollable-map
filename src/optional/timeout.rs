@@ -1,4 +1,5 @@
 use crate::common::Timed;
+use crate::error::TimedError;
 use crate::optional::Optional;
 use core::future::Future;
 use core::ops::{Deref, DerefMut};
@@ -81,18 +82,18 @@ impl<T> TimeoutOptional<T> {
 }
 
 impl<T: Future> Future for TimeoutOptional<T> {
-    type Output = std::io::Result<T::Output>;
+    type Output = Result<T::Output, TimedError>;
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut this = self.project();
-        Pin::new(&mut this.task).poll(cx)
+        let this = self.project();
+        this.task.poll(cx).map_err(|_| TimedError)
     }
 }
 
 impl<T: Stream> Stream for TimeoutOptional<T> {
-    type Item = std::io::Result<T::Item>;
+    type Item = Result<T::Item, TimedError>;
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-        Pin::new(&mut this.task).poll_next(cx)
+        let this = self.project();
+        this.task.poll_next(cx).map_err(|_| TimedError)
     }
 }
 
@@ -124,10 +125,9 @@ mod test {
             let fut = Pin::new(&mut task);
             match fut.await {
                 Ok(_) => unreachable!("should time out"),
-                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                Err(_) => {
                     assert!(task.is_none());
                 }
-                Err(e) => panic!("unexpected error: {e}"),
             }
         })
     }
