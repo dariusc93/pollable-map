@@ -23,7 +23,7 @@ impl<S> StreamSet<S>
 where
     S: Stream,
 {
-    /// Creates an empty ['StreamSet`]
+    /// Creates an empty [`StreamSet`]
     pub fn new() -> Self {
         Self {
             id: 0,

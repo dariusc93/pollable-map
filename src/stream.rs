@@ -1,4 +1,3 @@
-pub mod optional;
 pub mod set;
 #[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout_map;

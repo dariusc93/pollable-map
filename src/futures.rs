@@ -1,4 +1,3 @@
-pub mod optional;
 pub mod ordered;
 pub mod set;
 #[cfg(all(feature = "std", feature = "timeout"))]

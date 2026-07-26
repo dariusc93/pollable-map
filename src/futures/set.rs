@@ -24,7 +24,7 @@ impl<S> FutureSet<S>
 where
     S: Future,
 {
-    /// Creates an empty ['FutureSet`]
+    /// Creates an empty [`FutureSet`]
     pub fn new() -> Self {
         Self {
             id: 0,
