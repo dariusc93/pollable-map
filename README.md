@@ -2,14 +2,14 @@
 
 > Collections of futures and streams that can be polled as a single stream, along with utilities.
 
+[![Crates.io](https://img.shields.io/crates/v/pollable-map.svg)](https://crates.io/crates/pollable-map)
+[![Documentation](https://docs.rs/pollable-map/badge.svg)](https://docs.rs/pollable-map)
 ![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
-![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
 
-# Description
+## Description
 
-`pollable-map` is a utility that supply collections or maps of futures and streams that can be polled as a single
-stream,
-along with asynchronous utilities.
+`pollable-map` provides keyed collections of futures and streams that can be
+polled as a single stream, along with related asynchronous utilities.
 
 ## Overview
 
@@ -78,14 +78,14 @@ fn main() {
             futures::stream::once(async {
                 println!("message from 1");
             })
-                .boxed(),
+            .boxed(),
         );
         st_map.insert(
             2,
             futures::stream::once(async {
                 println!("message from 2");
             })
-                .boxed(),
+            .boxed(),
         );
 
         while let Some((key, _)) = st_map.next().await {
@@ -99,5 +99,8 @@ fn main() {
 
 ## License
 
-Dual licensed under MIT or Apache License (Version 2.0). See [LICENSE-MIT](./LICENSE-MIT) and
-[LICENSE-APACHE](./LICENSE-APACHE) for more details. You may choose the license that best fits your use case.
+Dual licensed under the
+[MIT License](https://github.com/dariusc93/pollable-map/blob/main/LICENSE-MIT)
+or the
+[Apache License 2.0](https://github.com/dariusc93/pollable-map/blob/main/LICENSE-APACHE).
+You may choose either license.

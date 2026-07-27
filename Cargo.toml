@@ -1,6 +1,6 @@
 [package]
 name = "pollable-map"
-version = "0.1.7"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.81"
 license = "Apache-2.0 OR MIT"
@@ -9,16 +9,16 @@ repository = "https://github.com/dariusc93/pollable-map"
 authors = ["Darius Clark"]
 exclude = [".gitignore"]
 readme = "README.md"
-categories = ["asynchronous"]
-keywords = ["futures", "async"]
+categories = ["asynchronous", "no-std"]
+keywords = ["futures", "async", "no-std"]
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "alloc"]
-std = ["futures/std"]
+default = ["std"]
+std = ["alloc", "futures/std"]
 alloc = ["futures/alloc"]
 timeout = ["std", "dep:futures-timeout"]
 
