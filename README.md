@@ -1,8 +1,15 @@
 # pollable-map
 
-`pollable-map` provides keyed collections of futures and streams that can be
-polled as a single stream. It also includes set variants, reusable optional
-tasks, ordered futures, and optional timeout wrappers.
+> Collections of futures and streams that can be polled as a single stream, along with utilities.
+
+![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
+![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
+
+# Description
+
+`pollable-map` is a utility that supply collections or maps of futures and streams that can be polled as a single
+stream,
+along with asynchronous utilities.
 
 ## Overview
 
