@@ -8,6 +8,7 @@ description = "Utilities for storing futures and streams as a pollable map"
 repository = "https://github.com/dariusc93/pollable-map"
 authors = ["Darius Clark"]
 exclude = [".gitignore"]
+readme = "README.md"
 
 [features]
 default = ["std", "alloc"]
