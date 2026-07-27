@@ -9,6 +9,12 @@ repository = "https://github.com/dariusc93/pollable-map"
 authors = ["Darius Clark"]
 exclude = [".gitignore"]
 readme = "README.md"
+categories = ["asynchronous"]
+keywords = ["futures", "async"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["std", "alloc"]
