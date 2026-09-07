@@ -120,6 +120,9 @@ where
     /// Clears the map.
     pub fn clear(&mut self) {
         self.list.clear();
+        if let Some(waker) = self.waker.take() {
+            waker.wake();
+        }
     }
 
     /// Returns a reference to the future corresponding to the key.
