@@ -5,6 +5,9 @@ pub mod timeout_map;
 #[cfg(all(feature = "std", feature = "timeout"))]
 pub mod timeout_set;
 
+#[cfg(all(feature = "std", feature = "timeout"))]
+pub mod run_after;
+
 use crate::common::InnerMap;
 use core::future::Future;
 use core::pin::Pin;

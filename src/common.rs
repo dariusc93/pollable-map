@@ -180,6 +180,14 @@ impl<F> Timed<F> {
 }
 
 #[cfg(all(feature = "std", feature = "timeout"))]
+impl Timed<futures::future::Pending<()>> {
+    #[allow(dead_code)]
+    pub(crate) fn empty(duration: core::time::Duration) -> Self {
+        Self(Timeout::new(futures::future::pending(), duration))
+    }
+}
+
+#[cfg(all(feature = "std", feature = "timeout"))]
 impl<F> Future for Timed<F>
 where
     F: Future,
