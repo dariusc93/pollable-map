@@ -15,6 +15,7 @@ pub struct InnerMap<K, S> {
     key: K,
     #[pin]
     inner: Option<S>,
+    waker: Option<core::task::Waker>,
     wake_on_success: bool,
 }
 
@@ -25,6 +26,7 @@ impl<K, S> InnerMap<K, S> {
             key,
             inner: Some(inner),
             wake_on_success: false,
+            waker: None,
         }
     }
 
@@ -64,14 +66,23 @@ impl<K, S> InnerMap<K, S> {
     }
 
     pub fn take_inner(&mut self) -> Option<S> {
-        self.inner.take()
+        let val = self.inner.take();
+        if let Some(waker) = self.waker.take() {
+            waker.wake();
+        }
+        val
     }
 
     pub fn take_inner_pin(self: Pin<&mut Self>) -> Option<S>
     where
         S: Unpin,
     {
-        self.project().inner.get_mut().take()
+        let this = self.project();
+        let val = this.inner.get_mut().take();
+        if let Some(waker) = this.waker.take() {
+            waker.wake();
+        }
+        val
     }
 
     pub fn key_value_pin(self: Pin<&mut Self>) -> Option<(&K, Pin<&mut S>)> {
@@ -94,6 +105,8 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
+
+        *this.waker = Some(cx.waker().clone());
 
         let Some(st) = this.inner.as_mut().as_pin_mut() else {
             return Poll::Ready((this.key.clone(), None));
@@ -131,6 +144,7 @@ where
                     //       from stream
                     cx.waker().wake_by_ref();
                 }
+                this.waker.take();
                 Poll::Ready(Some((this.key.clone(), Some(value))))
             }
             Poll::Ready(None) => {
@@ -139,9 +153,13 @@ where
                 //       In the future, we could probably provide a flag that would allow us to take the inner stream or keep it and attempt on polling it again
                 //       without actually terminating it.
                 this.inner.set(None);
+                this.waker.take();
                 Poll::Ready(Some((this.key.clone(), None)))
             }
-            Poll::Pending => Poll::Pending,
+            Poll::Pending => {
+                *this.waker = Some(cx.waker().clone());
+                Poll::Pending
+            }
         }
     }
 }
