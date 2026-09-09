@@ -42,6 +42,9 @@ impl<K, T> FutureMap<K, T> {
     /// Set flag to terminate stream after all futures are completed
     pub fn set_terminate_on_empty(&mut self, terminate: bool) {
         self.terminate_on_empty = terminate;
+        if let Some(waker) = self.waker.take() {
+            waker.wake();
+        }
     }
 }
 
@@ -184,6 +187,9 @@ where
     where
         T: Default,
     {
+        if self.contains_key(key) {
+            return self.get_mut(key).expect("valid entry");
+        }
         self.insert(key.clone(), T::default());
         self.get_mut(key).expect("valid entry")
     }
@@ -252,7 +258,12 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.list.size_hint()
+        let len = Pin::new(&self.list)
+            .iter_pin_ref()
+            .filter(|entry| entry.as_ref().inner_pin_ref().is_some())
+            .count();
+
+        (len, Some(len))
     }
 }
 

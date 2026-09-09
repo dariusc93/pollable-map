@@ -47,6 +47,9 @@ where
     /// Set flag to terminate stream after all streams are completed
     pub fn set_terminate_on_empty(&mut self, terminate: bool) {
         self.terminate_on_empty = terminate;
+        if let Some(waker) = self.waker.take() {
+            waker.wake();
+        }
     }
 }
 
@@ -187,6 +190,9 @@ where
     where
         T: Default,
     {
+        if self.contains_key(key) {
+            return self.get_mut(key).expect("valid entry");
+        }
         self.insert(key.clone(), T::default());
         self.get_mut(key).expect("valid entry")
     }
@@ -270,7 +276,7 @@ where
     T: Stream,
 {
     fn is_terminated(&self) -> bool {
-        self.terminate_on_empty && self.list.is_terminated()
+        self.terminate_on_empty && (self.list.is_empty() || self.list.is_terminated())
     }
 }
 
