@@ -67,9 +67,7 @@ impl<K, S> InnerMap<K, S> {
 
     pub fn take_inner(&mut self) -> Option<S> {
         let val = self.inner.take();
-        if let Some(waker) = self.waker.take() {
-            waker.wake();
-        }
+        self.wake();
         val
     }
 
@@ -92,6 +90,18 @@ impl<K, S> InnerMap<K, S> {
 
     pub fn inner_pin(self: Pin<&mut Self>) -> Option<Pin<&mut S>> {
         self.project().inner.as_pin_mut()
+    }
+
+    pub fn wake(&mut self) {
+        if let Some(waker) = self.waker.take() {
+            waker.wake();
+        }
+    }
+
+    pub fn wake_pin(self: Pin<&mut Self>) {
+        if let Some(waker) = self.project().waker.take() {
+            waker.wake();
+        }
     }
 }
 

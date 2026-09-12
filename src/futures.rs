@@ -157,6 +157,25 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Wakes all futures in the map.
+    pub fn wake_all(&mut self) {
+        let list = Pin::new(&mut self.list);
+        for fut in list.iter_pin_mut() {
+            fut.wake_pin();
+        }
+    }
+
+    /// Wakes a specific future by key.
+    ///
+    /// Note that this should be called if there is any direct changes to the future
+    /// via [`FutureMap::get_mut`] or similar that may require the waker to be notified.
+    pub fn wake(&mut self, key: &K) {
+        let list = Pin::new(&mut self.list);
+        if let Some(fut) = list.iter_pin_mut().find(|f| f.key().eq(key)) {
+            fut.wake_pin();
+        }
+    }
 }
 
 impl<K, T> FutureMap<K, T>

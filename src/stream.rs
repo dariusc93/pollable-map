@@ -162,6 +162,27 @@ where
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Wakes all streams in the map.
+    pub fn wake_all(&mut self) {
+        for st in self.list.iter_mut() {
+            st.as_mut().wake_pin();
+        }
+    }
+
+    /// Wakes a specific stream by key.
+    ///
+    /// Note that this should be called if there is any direct changes to the stream
+    /// via [`StreamMap::get_mut`] or similar that may require the waker to be notified.
+    pub fn wake(&mut self, key: &K) {
+        if let Some(entry) = self
+            .list
+            .iter_mut()
+            .find(|entry| entry.as_ref().key_pin().eq(key))
+        {
+            entry.as_mut().wake_pin();
+        }
+    }
 }
 
 impl<K, T> StreamMap<K, T>
