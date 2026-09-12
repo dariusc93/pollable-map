@@ -16,6 +16,7 @@ pub struct StreamMap<K, S> {
     list: SelectAll<Pin<Box<InnerMap<K, S>>>>,
     empty: bool,
     terminate_on_empty: bool,
+    has_finished: bool,
     waker: Option<Waker>,
 }
 
@@ -40,12 +41,16 @@ where
             list: SelectAll::new(),
             empty: true,
             terminate_on_empty: false,
+            has_finished: false,
             waker: None,
         }
     }
 
     /// Set flag to terminate stream after all streams are completed
     pub fn set_terminate_on_empty(&mut self, terminate: bool) {
+        if self.terminate_on_empty && !terminate {
+            self.has_finished = false;
+        }
         self.terminate_on_empty = terminate;
         if let Some(waker) = self.waker.take() {
             waker.wake();
@@ -73,6 +78,7 @@ where
             waker.wake();
         }
 
+        self.has_finished = false;
         self.empty = false;
         true
     }
@@ -251,6 +257,7 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.list.is_empty() {
             if self.terminate_on_empty {
+                self.has_finished = true;
                 return Poll::Ready(None);
             }
             self.waker = Some(cx.waker().clone());
@@ -259,7 +266,10 @@ where
 
         loop {
             match self.list.poll_next_unpin(cx) {
-                Poll::Ready(Some((key, Some(item)))) => return Poll::Ready(Some((key, item))),
+                Poll::Ready(Some((key, Some(item)))) => {
+                    self.has_finished = false;
+                    return Poll::Ready(Some((key, item)));
+                }
                 // We continue in case there is any progress on the set of streams
                 Poll::Ready(Some((_key, None))) => continue,
                 Poll::Ready(None) => {
@@ -275,6 +285,7 @@ where
                     }
 
                     self.empty = true;
+                    self.has_finished = true;
                     return Poll::Ready(None);
                 }
                 Poll::Pending => {
@@ -297,7 +308,8 @@ where
     T: Stream,
 {
     fn is_terminated(&self) -> bool {
-        self.terminate_on_empty && (self.list.is_empty() || self.list.is_terminated())
+        self.has_finished
+            || (self.terminate_on_empty && (self.list.is_empty() || self.list.is_terminated()))
     }
 }
 

@@ -19,6 +19,7 @@ pub struct FutureMap<K, S> {
     list: FuturesUnordered<InnerMap<K, S>>,
     empty: bool,
     terminate_on_empty: bool,
+    has_finished: bool,
     waker: Option<Waker>,
 }
 
@@ -35,12 +36,16 @@ impl<K, T> FutureMap<K, T> {
             list: FuturesUnordered::new(),
             empty: true,
             terminate_on_empty: false,
+            has_finished: false,
             waker: None,
         }
     }
 
     /// Set flag to terminate stream after all futures are completed
     pub fn set_terminate_on_empty(&mut self, terminate: bool) {
+        if self.terminate_on_empty && !terminate {
+            self.has_finished = false;
+        }
         self.terminate_on_empty = terminate;
         if let Some(waker) = self.waker.take() {
             waker.wake();
@@ -69,6 +74,7 @@ where
         }
 
         self.empty = false;
+        self.has_finished = false;
         true
     }
 
@@ -258,6 +264,7 @@ where
                     // as that may be seen as UB and may cause an increase in cpu usage
                     if self.empty {
                         if self.terminate_on_empty {
+                            self.has_finished = true;
                             return Poll::Ready(None);
                         }
                         self.waker = Some(cx.waker().clone());
@@ -265,6 +272,7 @@ where
                     }
 
                     self.empty = true;
+                    self.has_finished = true;
                     return Poll::Ready(None);
                 }
                 Poll::Pending => {
@@ -292,7 +300,7 @@ where
     T: Future,
 {
     fn is_terminated(&self) -> bool {
-        self.terminate_on_empty && self.list.is_terminated()
+        self.has_finished || (self.terminate_on_empty && self.list.is_terminated())
     }
 }
 
