@@ -6,6 +6,8 @@ use core::ops::{Deref, DerefMut};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
+use futures::future::FusedFuture;
+use futures::stream::FusedStream;
 use futures::Stream;
 
 /// A reusable future or stream based on `Option` that will time out after a specific duration as elapse.
@@ -89,11 +91,23 @@ impl<T: Future> Future for TimeoutOptional<T> {
     }
 }
 
+impl<T: Future> FusedFuture for TimeoutOptional<T> {
+    fn is_terminated(&self) -> bool {
+        self.task.is_terminated()
+    }
+}
+
 impl<T: Stream> Stream for TimeoutOptional<T> {
     type Item = Result<T::Item, TimedError>;
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();
         this.task.poll_next(cx).map_err(|_| TimedError)
+    }
+}
+
+impl<T: Stream> FusedStream for TimeoutOptional<T> {
+    fn is_terminated(&self) -> bool {
+        self.task.is_terminated()
     }
 }
 
