@@ -61,6 +61,11 @@ where
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
+
+    /// Wake all streams in the set.
+    pub fn wake(&mut self) {
+        self.map.wake_all();
+    }
 }
 
 impl<S> StreamSet<S>
