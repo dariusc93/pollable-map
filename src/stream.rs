@@ -255,15 +255,6 @@ where
     type Item = (K, T::Item);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if self.list.is_empty() {
-            if self.terminate_on_empty {
-                self.has_finished = true;
-                return Poll::Ready(None);
-            }
-            self.waker = Some(cx.waker().clone());
-            return Poll::Pending;
-        }
-
         loop {
             match self.list.poll_next_unpin(cx) {
                 Poll::Ready(Some((key, Some(item)))) => {
@@ -279,7 +270,7 @@ where
                     // can be terminated while on the next poll, we could let it be return pending.
                     // We do this so that we are not returning `Poll::Ready(None)` each time the map is polled
                     // as that may be seen as UB and may cause an increase in cpu usage
-                    if self.empty {
+                    if self.empty && !self.terminate_on_empty {
                         self.waker = Some(cx.waker().clone());
                         return Poll::Pending;
                     }
