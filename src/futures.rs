@@ -81,6 +81,7 @@ where
     /// Mark future with assigned key to wake up on successful yield.
     /// Will return false if future does not exist or if value is the same as
     /// previously set.
+    // Note: this is NO-OP pending decisions on if this should be used
     pub fn set_wake_on_success(&mut self, key: &K, wake_on_success: bool) -> bool {
         Pin::new(&mut self.list)
             .iter_pin_mut()
