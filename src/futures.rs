@@ -211,6 +211,7 @@ where
     /// Returns a mutable future or default value if it does not exist.
     pub fn get_mut_or_default(&mut self, key: &K) -> &mut T
     where
+        K: Eq,
         T: Default,
     {
         if self.contains_key(key) {
